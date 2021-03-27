@@ -6,7 +6,9 @@ import scipy.io as sio
 from torch.autograd import Variable
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
-import skimage.io as io
+from PIL import Image
+import PIL
+import cv2
 
 
 class MatterPortDataSet(Dataset):
@@ -16,6 +18,8 @@ class MatterPortDataSet(Dataset):
         parameter: the base dir of the dataset, the type(training, validation, testing)
         return:empty
         '''
+        self.setTransform()
+
         self.base_dir = base_dir 
         self.type = the_type
         self.mat_path = os.path.join(base_dir, the_type, the_type + '.mat')
@@ -28,7 +32,10 @@ class MatterPortDataSet(Dataset):
         self.intrinsics = []
         self.faces = []
         self.params = []
-        self.norms = [] 
+        self.norms_x = [] 
+        self.norms_y = [] 
+        self.norms_z = [] 
+
         self.boundarys = [] 
         self.radiuss = [] 
     
@@ -118,7 +125,7 @@ class MatterPortDataSet(Dataset):
         for i in range(self.length):
 
             image_name = os.path.join(self.base_dir, self.type, 'image', self.image_filenames[i])
-            image = io.imread(image_name)
+            image = Image.open(image_name)
             self.images.append(image)
             if not the_type == 'testing':
                 base_name = self.depth_filenames[i][:-4]
@@ -132,29 +139,41 @@ class MatterPortDataSet(Dataset):
                 boundary_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_boundary.png')
                 radius_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_radius.png')
 
-                depth = io.imread(depth_name)
-                init_label = io.imread(init_label_name)
-                layout_depth = io.imread(layout_depth_name)
-                layout_seg = io.imread(layout_seg_name)
+                depth = Image.open(depth_name).convert('I')
+                init_label = Image.open(init_label_name).convert('I')
+                layout_depth = Image.open(layout_depth_name).convert('I')
+                layout_seg = Image.open(layout_seg_name).convert('I')
+                nx = Image.open(nx_name).convert('I')
+                ny = Image.open(ny_name).convert('I')
+                nz = Image.open(nz_name).convert('I')
+                boundary = Image.open(boundary_name).convert('I')
+                radius = Image.open(radius_name).convert('I')
 
-                nx = io.imread(nx_name)
-                ny = io.imread(ny_name)
-                nz = io.imread(nz_name)
-                boundary = io.imread(boundary_name)   
-                radius = io.imread(radius_name)    
-                nx = nx.reshape((nx.shape[0], nx.shape[1], 1))
-                ny = ny.reshape((ny.shape[0], ny.shape[1], 1))
-                nz = nz.reshape((nz.shape[0], nz.shape[1], 1))
-                norm = np.concatenate((nx, ny, nz), axis = 2)
-            
                 self.depths.append(depth)
                 self.init_labels.append(init_label)
                 self.layout_depths.append(layout_depth)
                 self.layout_segs.append(layout_seg)
-                self.norms.append(norm)  
+                self.norms_x.append(nx)  
+                self.norms_y.append(ny)  
+                self.norms_z.append(nz)  
+
                 self.boundarys.append(boundary) 
                 self.radiuss.append(radius)  
- 
+
+    def setTransform(self):
+        '''
+        description: set the transformation of the input picture
+        parameter: empty
+        return: empty
+        '''
+        self.transform_picture = transforms.Compose([
+                                transforms.RandomResizedCrop([304, 228]),
+                                transforms.ToTensor(),
+                                transforms.ColorJitter(brightness = 0.4, contrast = 0.4, saturation = 0.4, )])
+        self.transform_depth = transforms.Compose([transforms.Resize([152, 114]), transforms.ToTensor()])
+        self.transform_seg = transforms.Compose([transforms.Resize([152, 114], interpolation = PIL.Image.NEAREST), transforms.ToTensor()])
+        #self.transform_seg = transforms.Compose([transforms.ToTensor()])
+
     def __getitem__(self, i):
         '''
         description: get one part of the item
@@ -162,10 +181,23 @@ class MatterPortDataSet(Dataset):
         return: the data
         '''
         if self.type == 'testing':
-            return self.images[i], self.intrinsics[i]
+            image = self.transform_picture(self.images[i])
+            return image, self.intrinsics[i]
         else:
-            return self.depths[i], self.images[i], self.init_labels[i], self.layout_depths[i], self.layout_segs[i], \
-            self.faces[i], self.params[i], self.intrinsics[i], self.points[i], self.norms[i], self.boundarys[i], self.radiuss[i]
+            depth = self.transform_depth(self.depths[i])
+            image = self.transform_picture(self.images[i])
+            init_label = self.transform_seg(self.init_labels[i])
+            layout_depth = self.transform_depth(self.layout_depths[i])
+            layout_seg = self.transform_seg(self.layout_segs[i])
+            nx = self.transform_depth(self.norms_x[i])
+            ny = self.transform_depth(self.norms_y[i])
+            nz = self.transform_depth(self.norms_z[i])
+            nx = nx.resize(nx.size()[1], nx.size()[2])
+            ny = ny.resize(ny.size()[1], ny.size()[2])
+            nz = nz.resize(nz.size()[1], nz.size()[2])
+            norm = torch.stack((nx, ny, nz))
+            return depth, image, init_label, layout_depth, layout_seg, \
+            self.faces[i], self.intrinsics[i], norm
  
     def __len__(self):
         '''
@@ -179,22 +211,19 @@ class MatterPortDataSet(Dataset):
 
 a = MatterPortDataSet('E:\\dataset\\geolayout', 'validation')
 print('length:', a.__len__())
-depth, image, init_label, layout_depth, layout_seg, face, param, intrinsic, point, norm, boundary, radius = a.__getitem__(10)
-print('depth:', depth, depth.shape)
-print('image:', image, image.shape)
-print('init_label:', init_label, init_label.shape)
-print('layout_depth:', layout_depth, layout_depth.shape)
-print('layout_seg:', layout_seg, layout_seg.shape)
+depth, image, init_label, layout_depth, layout_seg, face, intrinsic, norm = a.__getitem__(10)
+print('depth:', depth, depth.size())
+print('image:', image, image.size())
+print('init_label:', init_label, init_label.size())
+print('layout_depth:', layout_depth, layout_depth.size())
+print('layout_seg:', layout_seg, layout_seg.size())
 print('face:', face, len(face))
-print('param:', param, len(param))
 print('intrinsic:', intrinsic, intrinsic.shape)
-print('point:', point, point.shape)
-print('norm:', norm, norm.shape)
-print('boundary:', boundary, boundary.shape)
-print('radius:', radius, radius.shape)
+print('norm:', norm, norm.size())
+
 
 b = MatterPortDataSet('E:\\dataset\\geolayout', 'testing')
 print('length:', b.__len__())
 image, intrinsic = b.__getitem__(10)
-print('image:', image, image.shape)
+print('image:', image, image.size())
 print('intrinsic:', intrinsic, intrinsic.shape)
