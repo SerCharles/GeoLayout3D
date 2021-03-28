@@ -22,11 +22,11 @@ def get_parameter(depth_map):
             zz = float(depth_map[0][v][u]) 
 
             if u != len(depth_map[0][v]) - 1:
-                pp = float(depth_map[0][v][u + 1]) - float(depth_map[0][v][u])
+                pp = 1.0 / float(depth_map[0][v][u + 1]) - 1.0 / float(depth_map[0][v][u])
             else: 
                 pp = float(p[0][v][u - 1])
             if v != len(depth_map[0]) - 1:
-                qq = float(depth_map[0][v + 1][u]) - float(depth_map[0][v][u])
+                qq = 1.0 / float(depth_map[0][v + 1][u]) - 1.0 / float(depth_map[0][v][u])
             else: 
                 qq = float(q[0][v - 1][u])
             rr = 1 / zz - pp * u - qq * v
@@ -72,18 +72,36 @@ def get_average_plane_info(parameters, plane_seg, plane_ids):
             the_r = float(r[0][v][u])
             the_s = float(s[0][v][u])
             average_paramater[the_seg]['count'] += 1
-            average_paramater[the_seg]['p'] += (the_p * the_s) 
+            '''
+            average_paramater[the_seg]['p'] += (the_p * the_s)
             average_paramater[the_seg]['q'] += (the_q * the_s)
             average_paramater[the_seg]['r'] += (the_r * the_s)
-            #average_paramater[the_seg]['s'] += the_s
+            '''
+
+            average_paramater[the_seg]['p'] += the_p
+            average_paramater[the_seg]['q'] += the_q
+            average_paramater[the_seg]['r'] += the_r
+            average_paramater[the_seg]['s'] += the_s
+            
     for the_id in plane_ids: 
+        
         pp = average_paramater[the_id]['p'] / average_paramater[the_id]['count']
         qq = average_paramater[the_id]['q'] / average_paramater[the_id]['count']
         rr = average_paramater[the_id]['r'] / average_paramater[the_id]['count']
+
+        
+        ss = average_paramater[the_id]['s'] / average_paramater[the_id]['count']
+        
+        '''
         ss = sqrt(pp ** 2 + qq ** 2 + rr ** 2)
-        average_paramater[the_id]['p'] = pp / ss 
-        average_paramater[the_id]['q'] = qq / ss 
-        average_paramater[the_id]['r'] = rr / ss 
+        pp /= ss 
+        qq /= ss 
+        rr /= ss
+        '''
+
+        average_paramater[the_id]['p'] = pp 
+        average_paramater[the_id]['q'] = qq 
+        average_paramater[the_id]['r'] = rr
         average_paramater[the_id]['s'] = ss 
     return average_paramater
 
@@ -99,10 +117,13 @@ def get_average_depth_map(plane_ids, plane_seg, average_plane_info, shape):
         q = average_plane_info[the_id]['q']
         r = average_plane_info[the_id]['r']
         s = average_plane_info[the_id]['s']
+        count = 0
         for v in range(len(depth_map[0])):
             for u in range(len(depth_map[0][v])): 
                 if int(plane_seg[0][v][u]) == the_id:
+                    count += 1
                     depth_map[0][v][u] = 1 / ((p * u + q * v + r) * s)
+        print(count)
     return depth_map
 
 
@@ -135,7 +156,13 @@ print(plane_info)
 depth_average = get_average_depth_map(plane_ids, plane_seg, plane_info, p.size())
 print(depth_average)
 
-for v in range(len(depth_map[0])):
-    for u in range(len(depth_map[0][v])): 
-        diff = abs(float(depth_average[0][v][u]) - float(depth_map[0][v][u]))
-        print(diff)
+for the_id in plane_ids:
+    count = 0
+    diff = 0
+    for v in range(len(depth_map[0])):
+        for u in range(len(depth_map[0][v])): 
+            if int(plane_seg[0][v][u]) == the_id:
+                count += 1
+                diff += abs(float(depth_average[0][v][u]) - float(depth_map[0][v][u]))
+    diff /= count 
+    print(the_id, count, diff)
