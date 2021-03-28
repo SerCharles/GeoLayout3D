@@ -12,11 +12,11 @@ import models.modules as modules
 import models.net as net
 
 
-def load_params():
+def init_args():
     '''
-    description: load train params
+    description: load train args
     parameter: empty
-    return: params
+    return: args
     '''
     parser = argparse.ArgumentParser(description = 'PyTorch GeoLayout3D Training')
     parser.add_argument('--seed', default = 1453)
@@ -103,7 +103,7 @@ def init_model(args):
     model = net.model(Encoder, num_features = 2048, block_channel = [256, 512, 1024, 2048])
     if device:
         model.to(device)
-        
+
     print('Getting optimizer')
     optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay = args.weight_decay)
 
@@ -111,7 +111,6 @@ def init_model(args):
     print('Getting dataset')
     dataset_training = MatterPortDataSet(args.base_dir, 'training')
     dataset_validation = MatterPortDataSet(args.base_dir, 'validation')
-
-    data_loader_shapenet_train =  DataLoader(dataset_training, batch_size = args.batch_size, shuffle = True, num_workers = 2)
-    data_loader_shapenet_val = DataLoader(dataset_validation, batch_size = args.batch_size, shuffle = True, num_workers = 2)
     print('Data got!')
+
+    return device, dataset_training, dataset_validation, model, optimizer
