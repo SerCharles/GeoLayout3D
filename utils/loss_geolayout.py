@@ -1,6 +1,10 @@
 import numpy as np
 import os
 from math import *
+from PIL import Image
+import PIL
+import torch
+from torchvision import transforms
 from get_parameter_geolayout import *
 
 def parameter_loss(parameter, parameter_gt):
@@ -11,14 +15,15 @@ def parameter_loss(parameter, parameter_gt):
     '''
     p, q, r, s = parameter
     p_gt, q_gt, r_gt, s_gt = parameter_gt
-    dp = (np.abs(p - p_gt)).sum()
-    dq = (np.abs(q - q_gt)).sum() 
-    dr = (np.abs(r - r_gt)).sum() 
-    ds = (np.abs(s - s_gt)).sum() 
+    dp = torch.sum((torch.abs(p - p_gt)))
+    dq = torch.sum((torch.abs(q - q_gt)))
+    dr = torch.sum((torch.abs(r - r_gt))) 
+    ds = torch.sum((torch.abs(s - s_gt)))
     loss = dp + dq + dr + ds 
+    loss /= (len(p[0]) * len(p[0][0]))
     return loss 
 
-def discrimitive_loss(parameter, plane_seg_gt, plane_id_gt, average_plane_info, delta_v, delta_d):
+def discrimitive_loss(parameters, plane_seg_gt, plane_id_gt, average_plane_info, delta_v, delta_d):
     '''
     description: get the discrimitive loss 
     parameter: the parameter driven by our model, the ground truth segmentation loss, the ground truth plane id
@@ -35,13 +40,13 @@ def discrimitive_loss(parameter, plane_seg_gt, plane_id_gt, average_plane_info, 
         lvars[t_id] = {'count': 0, 'loss': 0.0} 
     
     #get lvars
-    for v in range(len(plane_seg)) :
-        for u in range(len(plane_seg[v])): 
-            the_seg = plane_seg[v][u] 
-            the_p = p[v][u]
-            the_q = q[v][u]
-            the_r = r[v][u]
-            the_s = s[v][u]
+    for v in range(len(plane_seg[0])) :
+        for u in range(len(plane_seg[0][v])): 
+            the_seg = int(plane_seg[0][v][u])
+            the_p = float(p[0][v][u])
+            the_q = float(q[0][v][u])
+            the_r = float(r[0][v][u])
+            the_s = float(s[0][v][u])
             gt_p = average_plane_info[the_seg]['p']
             gt_q = average_plane_info[the_seg]['q']
             gt_r = average_plane_info[the_seg]['r']
@@ -84,17 +89,37 @@ def discrimitive_loss(parameter, plane_seg_gt, plane_id_gt, average_plane_info, 
     return lvar + dvar
   
 
-def depth_loss(parameter, plane_id_gt, average_plane_info, depth_gt):
+def depth_loss(plane_id_gt, plane_seg_gt, average_plane_info, depth_gt):
     '''
     description: get the depth loss 
-    parameter: the depth driven by our model, the ground truth depth
+    parameter: the ground truth plane ids and seg infos, the average pqrs info, ground truth
     return: depth loss
     '''
-    average_plane_info = get_average_depth_map(plane_id_gt, average_plane_info, depth_gt.shape)
-    loss = 0
-    for the_id in plane_id_gt:
-        depth = average_plane_info[the_id]['depth_map']
-        new_loss = (np.abs(depth - depth_gt)).sum()
-        loss += new_loss
-    loss /= len(plane_id_gt)
+    depth = get_average_depth_map(plane_id_gt, plane_seg_gt, average_plane_info)
+
+    loss = torch.sum(torch.abs(depth - depth_gt))
+    loss /= (len(depth[0]) * len(depth[0][0]))
     return loss
+
+name = 'E:\\dataset\\geolayout\\validation\\layout_depth\\04cdd02138664b138f281bb5ad8b957f_i1_3_layout.png'
+depth_map_original = Image.open(name).convert('I')
+transform_depth = transforms.Compose([transforms.Resize([152, 114]), transforms.ToTensor()])
+depth_map_original = transform_depth(depth_map_original)
+name = 'E:\\dataset\\geolayout\\validation\\layout_seg\\04cdd02138664b138f281bb5ad8b957f_i1_3_seg.png'
+plane_seg = Image.open(name).convert('I')
+transform_seg = transforms.Compose([transforms.Resize([152, 114], interpolation = PIL.Image.NEAREST), transforms.ToTensor()])
+plane_seg = transform_seg(plane_seg)
+plane_ids = [1, 3, 4, 5]
+
+
+p, q, r, s = get_parameter(depth_map_original, plane_seg)
+depth_map = get_depth_map(p, q, r, s)
+plane_info = get_average_plane_info((p, q, r, s), plane_seg, plane_ids)
+depth_average = get_average_depth_map(plane_ids, plane_seg, plane_info)
+p_avg, q_avg, r_avg, s_avg = set_average_plane_info(plane_ids, plane_seg, plane_info)
+
+loss_p = parameter_loss((p_avg, q_avg, r_avg, s_avg), (p, q, r, s))
+loss_dis_1 = discrimitive_loss((p, q, r, s), plane_seg, plane_ids, plane_info, 0.1, 1.0)
+loss_dis_2 = discrimitive_loss((p_avg, q_avg, r_avg, s_avg), plane_seg, plane_ids, plane_info, 0.1, 1.0)
+loss_d = depth_loss(plane_ids, plane_seg, plane_info, depth_map)
+print(loss_p, loss_dis_1, loss_dis_2, loss_d)

@@ -87,36 +87,59 @@ def get_average_plane_info(parameters, plane_seg, plane_ids):
         average_paramater[the_id]['s'] = ss 
     return average_paramater
 
-def get_average_depth_map(plane_ids, plane_seg, average_plane_info, shape):
+def get_average_depth_map(plane_ids, plane_seg, average_plane_info):
     '''
     description: get the depth from the average parameters(p, q, r, s)
-    parameter: the plane ids, plane_segs, the average plane infos, the shape of the depth map
+    parameter: the plane ids, plane_segs, the average plane infos
     return: evaluated depth maps of all planes
     '''
-    depth_map = torch.zeros(shape, dtype = float)
+    depth_map = torch.zeros(plane_seg.size(), dtype = float)
     for the_id in plane_ids: 
         p = average_plane_info[the_id]['p']
         q = average_plane_info[the_id]['q']
         r = average_plane_info[the_id]['r']
         s = average_plane_info[the_id]['s']
-        count = 0
         for v in range(len(depth_map[0])):
             for u in range(len(depth_map[0][v])): 
                 if int(plane_seg[0][v][u]) == the_id:
-                    count += 1
                     depth_map[0][v][u] = 1 / ((p * u + q * v + r) * s)
     return depth_map
 
+def set_average_plane_info(plane_ids, plane_seg, average_plane_info):
+    '''
+    description: set the per pixel plane info to the average
+    parameter: the plane ids, plane_segs, the average plane infos, the shape of the depth map
+    return: average per pixel plane info
+    '''
+    p = torch.zeros(plane_seg.size(), dtype = float)
+    q = torch.zeros(plane_seg.size(), dtype = float)
+    r = torch.zeros(plane_seg.size(), dtype = float)
+    s = torch.zeros(plane_seg.size(), dtype = float)
+
+    for the_id in plane_ids: 
+        pp = average_plane_info[the_id]['p']
+        qq = average_plane_info[the_id]['q']
+        rr = average_plane_info[the_id]['r']
+        ss = average_plane_info[the_id]['s']
+        for v in range(len(p[0])):
+            for u in range(len(p[0][v])): 
+                if int(plane_seg[0][v][u]) == the_id:
+                    p[0][v][u] = pp
+                    q[0][v][u] = qq
+                    r[0][v][u] = rr
+                    s[0][v][u] = ss
+    return p, q, r, s
+
 '''
-name = 'E:\\dataset\\geolayout\\validation\\layout_depth\\91fed30ccfab4e478b28bdf4a37e0d17_i0_2_layout.png'
+name = 'E:\\dataset\\geolayout\\validation\\layout_depth\\04cdd02138664b138f281bb5ad8b957f_i1_3_layout.png'
 depth_map_original = Image.open(name).convert('I')
 transform_depth = transforms.Compose([transforms.Resize([152, 114]), transforms.ToTensor()])
 depth_map_original = transform_depth(depth_map_original)
-name = 'E:\\dataset\\geolayout\\validation\\layout_seg\\91fed30ccfab4e478b28bdf4a37e0d17_i0_2_seg.png'
+name = 'E:\\dataset\\geolayout\\validation\\layout_seg\\04cdd02138664b138f281bb5ad8b957f_i1_3_seg.png'
 plane_seg = Image.open(name).convert('I')
 transform_seg = transforms.Compose([transforms.Resize([152, 114], interpolation = PIL.Image.NEAREST), transforms.ToTensor()])
 plane_seg = transform_seg(plane_seg)
-plane_ids = [1, 4, 5]
+plane_ids = [1, 3, 4, 5]
 
 
 p, q, r, s = get_parameter(depth_map_original, plane_seg)
@@ -137,7 +160,7 @@ print(rate)
 
 plane_info = get_average_plane_info((p, q, r, s), plane_seg, plane_ids)
 print(plane_info)
-depth_average = get_average_depth_map(plane_ids, plane_seg, plane_info, p.size())
+depth_average = get_average_depth_map(plane_ids, plane_seg, plane_info)
 print(depth_average)
 
 for the_id in plane_ids:

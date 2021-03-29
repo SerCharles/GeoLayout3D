@@ -211,7 +211,7 @@ class MatterPortDataSet(Dataset):
 '''
 a = MatterPortDataSet('E:\\dataset\\geolayout', 'validation')
 print('length:', a.__len__())
-depth, image, init_label, layout_depth, layout_seg, face, intrinsic, norm = a.__getitem__(333)
+depth, image, init_label, layout_depth, layout_seg, face, intrinsic, norm = a.__getitem__(0)
 print('depth:', depth, depth.size())
 print('image:', image, image.size())
 print('init_label:', init_label, init_label.size())
