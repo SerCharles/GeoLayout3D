@@ -134,7 +134,7 @@ def set_average_plane_info(plane_ids, plane_seg, average_plane_info):
 name = 'E:\\dataset\\geolayout\\validation\\layout_depth\\04cdd02138664b138f281bb5ad8b957f_i1_3_layout.png'
 depth_map_original = Image.open(name).convert('I')
 transform_depth = transforms.Compose([transforms.Resize([152, 114]), transforms.ToTensor()])
-depth_map_original = transform_depth(depth_map_original)
+depth_map_original = transform_depth(depth_map_original) / 4000.0
 name = 'E:\\dataset\\geolayout\\validation\\layout_seg\\04cdd02138664b138f281bb5ad8b957f_i1_3_seg.png'
 plane_seg = Image.open(name).convert('I')
 transform_seg = transforms.Compose([transforms.Resize([152, 114], interpolation = PIL.Image.NEAREST), transforms.ToTensor()])

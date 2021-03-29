@@ -184,10 +184,10 @@ class MatterPortDataSet(Dataset):
             image = self.transform_picture(self.images[i])
             return image, self.intrinsics[i]
         else:
-            depth = self.transform_depth(self.depths[i])
+            depth = self.transform_depth(self.depths[i]) / 4000.0
             image = self.transform_picture(self.images[i])
             init_label = self.transform_seg(self.init_labels[i])
-            layout_depth = self.transform_depth(self.layout_depths[i])
+            layout_depth = self.transform_depth(self.layout_depths[i]) / 4000.0
             layout_seg = self.transform_seg(self.layout_segs[i])
             nx = self.transform_depth(self.norms_x[i])
             ny = self.transform_depth(self.norms_y[i])
@@ -208,7 +208,7 @@ class MatterPortDataSet(Dataset):
         return self.length
 
 
-'''
+
 a = MatterPortDataSet('E:\\dataset\\geolayout', 'validation')
 print('length:', a.__len__())
 depth, image, init_label, layout_depth, layout_seg, face, intrinsic, norm = a.__getitem__(0)
@@ -221,7 +221,7 @@ print('face:', face, len(face))
 print('intrinsic:', intrinsic, intrinsic.shape)
 print('norm:', norm, norm.size())
 
-
+'''
 b = MatterPortDataSet('E:\\dataset\\geolayout', 'testing')
 print('length:', b.__len__())
 image, intrinsic = b.__getitem__(10)

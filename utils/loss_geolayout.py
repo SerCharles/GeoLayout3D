@@ -21,7 +21,7 @@ def parameter_loss(parameter, parameter_gt):
     ds = torch.sum((torch.abs(s - s_gt)))
     loss = dp + dq + dr + ds 
     loss /= (len(p[0]) * len(p[0][0]))
-    return loss 
+    return float(loss) 
 
 def discrimitive_loss(parameters, plane_seg_gt, plane_id_gt, average_plane_info, delta_v, delta_d):
     '''
@@ -61,7 +61,8 @@ def discrimitive_loss(parameters, plane_seg_gt, plane_id_gt, average_plane_info,
             lvars[the_seg]['count'] += 1 
             lvars[the_seg]['loss'] += loss 
     for the_id in plane_id_gt: 
-        lvar += (lvars[the_id]['loss'] / lvars[the_id]['count'])
+        the_average = lvars[the_id]['loss'] / lvars[the_id]['count']
+        lvar += the_average
     lvar /= C 
 
     #get dvar 
@@ -99,12 +100,13 @@ def depth_loss(plane_id_gt, plane_seg_gt, average_plane_info, depth_gt):
 
     loss = torch.sum(torch.abs(depth - depth_gt))
     loss /= (len(depth[0]) * len(depth[0][0]))
-    return loss
+    return float(loss)
 
+'''
 name = 'E:\\dataset\\geolayout\\validation\\layout_depth\\04cdd02138664b138f281bb5ad8b957f_i1_3_layout.png'
 depth_map_original = Image.open(name).convert('I')
 transform_depth = transforms.Compose([transforms.Resize([152, 114]), transforms.ToTensor()])
-depth_map_original = transform_depth(depth_map_original)
+depth_map_original = transform_depth(depth_map_original) / 4000.0
 name = 'E:\\dataset\\geolayout\\validation\\layout_seg\\04cdd02138664b138f281bb5ad8b957f_i1_3_seg.png'
 plane_seg = Image.open(name).convert('I')
 transform_seg = transforms.Compose([transforms.Resize([152, 114], interpolation = PIL.Image.NEAREST), transforms.ToTensor()])
@@ -123,3 +125,4 @@ loss_dis_1 = discrimitive_loss((p, q, r, s), plane_seg, plane_ids, plane_info, 0
 loss_dis_2 = discrimitive_loss((p_avg, q_avg, r_avg, s_avg), plane_seg, plane_ids, plane_info, 0.1, 1.0)
 loss_d = depth_loss(plane_ids, plane_seg, plane_info, depth_map)
 print(loss_p, loss_dis_1, loss_dis_2, loss_d)
+'''
