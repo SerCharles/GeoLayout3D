@@ -12,6 +12,35 @@ import cv2
 
 
 class MatterPortDataSet(Dataset):
+    def load_image(self, file_name):
+        '''
+        description: used in loading RGB image
+        parameter: filename
+        return: image info of PIL
+        '''
+        fp = open(file_name, 'rb')
+        pic = Image.open(fp)
+        pic_array = np.array(pic)
+        fp.close()
+        pic = Image.fromarray(pic_array)
+        return pic
+        
+    def load_depth(self, file_name):
+        '''
+        description: used in loading depth/norm/segmentation images
+        parameter: filename
+        return: info of PIL
+        '''
+        fp = open(file_name, 'rb')
+        pic = Image.open(fp)
+        pic_array = np.array(pic)
+        fp.close()
+        pic = Image.fromarray(pic_array)
+        pic = pic.convert("I")
+        return pic
+
+
+
     def __init__(self, base_dir, the_type):
         '''
         description: init the dataset
@@ -125,7 +154,7 @@ class MatterPortDataSet(Dataset):
         for i in range(self.length):
 
             image_name = os.path.join(self.base_dir, self.type, 'image', self.image_filenames[i])
-            image = Image.open(image_name)
+            image = self.load_image(image_name)
             self.images.append(image)
             if not the_type == 'testing':
                 base_name = self.depth_filenames[i][:-4]
@@ -139,15 +168,15 @@ class MatterPortDataSet(Dataset):
                 boundary_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_boundary.png')
                 radius_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_radius.png')
 
-                depth = Image.open(depth_name).convert('I')
-                init_label = Image.open(init_label_name).convert('I')
-                layout_depth = Image.open(layout_depth_name).convert('I')
-                layout_seg = Image.open(layout_seg_name).convert('I')
-                nx = Image.open(nx_name).convert('I')
-                ny = Image.open(ny_name).convert('I')
-                nz = Image.open(nz_name).convert('I')
-                boundary = Image.open(boundary_name).convert('I')
-                radius = Image.open(radius_name).convert('I')
+                depth = self.load_depth(depth_name)
+                init_label = self.load_depth(init_label_name)
+                layout_depth = self.load_depth(layout_depth_name)
+                layout_seg = self.load_depth(layout_seg_name)
+                nx = self.load_depth(nx_name)
+                ny = self.load_depth(ny_name)
+                nz = self.load_depth(nz_name)
+                boundary = self.load_depth(boundary_name)
+                radius = self.load_depth(radius_name)
 
                 self.depths.append(depth)
                 self.init_labels.append(init_label)
@@ -196,8 +225,8 @@ class MatterPortDataSet(Dataset):
             ny = ny.resize(ny.size()[1], ny.size()[2])
             nz = nz.resize(nz.size()[1], nz.size()[2])
             norm = torch.stack((nx, ny, nz))
-            return depth, image, init_label, layout_depth, layout_seg, \
-            self.faces[i], self.intrinsics[i], norm
+            intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
+            return depth, image, init_label, layout_depth, layout_seg, intrinsic, norm
  
     def __len__(self):
         '''
@@ -208,23 +237,28 @@ class MatterPortDataSet(Dataset):
         return self.length
 
 
+#unit test code
+def data_test():
+    a = MatterPortDataSet('E:\\dataset\\geolayout', 'validation')
+    i = 0
+    print('length:', a.__len__())
+    depth, image, init_label, layout_depth, layout_seg, intrinsic, norm = a.__getitem__(i)
+    print('filename:', a.layout_depth_filenames[i])
+    print('filename:', a.layout_depth_filenames[i + 1])
+    print('depth:', depth, depth.size())
+    print('image:', image, image.size())
+    print('init_label:', init_label, init_label.size())
+    print('layout_depth:', layout_depth, layout_depth.size())
+    print('layout_seg:', layout_seg, layout_seg.size())
+    print('intrinsic:', intrinsic, intrinsic.shape)
+    print('norm:', norm, norm.size())
 
-a = MatterPortDataSet('E:\\dataset\\geolayout', 'validation')
-print('length:', a.__len__())
-depth, image, init_label, layout_depth, layout_seg, face, intrinsic, norm = a.__getitem__(0)
-print('depth:', depth, depth.size())
-print('image:', image, image.size())
-print('init_label:', init_label, init_label.size())
-print('layout_depth:', layout_depth, layout_depth.size())
-print('layout_seg:', layout_seg, layout_seg.size())
-print('face:', face, len(face))
-print('intrinsic:', intrinsic, intrinsic.shape)
-print('norm:', norm, norm.size())
 
-'''
-b = MatterPortDataSet('E:\\dataset\\geolayout', 'testing')
-print('length:', b.__len__())
-image, intrinsic = b.__getitem__(10)
-print('image:', image, image.size())
-print('intrinsic:', intrinsic, intrinsic.shape)
-'''
+    b = MatterPortDataSet('E:\\dataset\\geolayout', 'testing')
+    j = 10
+    print('length:', b.__len__())
+    image, intrinsic = b.__getitem__(j)
+    print('image:', image, image.size())
+    print('intrinsic:', intrinsic, intrinsic.shape)
+
+data_test()

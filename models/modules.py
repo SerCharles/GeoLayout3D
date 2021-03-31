@@ -11,7 +11,7 @@ import torch.nn as nn
 from torch.utils import model_zoo
 import copy
 import numpy as np
-import senet
+from models.senet import *
 
 class _UpProjection(nn.Sequential):
 

@@ -12,7 +12,7 @@ import models.senet as senet
 import models.modules as modules 
 import models.net as net
 from utils.loss_geolayout import * 
-from utils.train_utils import *
+from train_utils import *
 from utils.get_parameter_geolayout import *
 
 def train(args, device, train_loader, model, optimizer, epoch):
@@ -22,18 +22,22 @@ def train(args, device, train_loader, model, optimizer, epoch):
     return: the model trained
     '''
     model.train()
-    for i, the_data in enumerate(train_loader):
+    print(train_loader)
+    for i, (depth, image, init_label, layout_depth, layout_seg, intrinsic, norm) in enumerate(train_loader):
         start = time.time()
 
-        depth, image, init_label, layout_depth, layout_seg, face, intrinsic, norm = the_data 
+        #depth, image, init_label, layout_depth, layout_seg, face, intrinsic, norm = the_data 
         image = image.to(device)
         layout_depth = layout_depth.to(device)
         layout_seg = layout_seg.to(device)
-        face = face.to(device)
         intrinsic = intrinsic.to(device)
+        face = get_plane_ids(layout_seg)
+        
 
         optimizer.zero_grad()
+        print(image.size())
         parameter = model(image)
+        print(parameter.size())
         average_plane_info = get_average_plane_info(parameter, layout_seg, face)
         parameter_gt = get_parameter(depth)
         loss = parameter_loss(parameter, parameter_gt) + \
@@ -49,5 +53,6 @@ def train(args, device, train_loader, model, optimizer, epoch):
         result_string = 'Train: Epoch: [{} / {}] Batch: [{} / {}] Time {:.3f} Loss {:.4f}' \
             .format(epoch + 1, args.epochs, i + 1, len(train_loader), the_time, loss)
         print(result_string)
+        write_log(args, epoch, i, 'training', result_string)
     return model
  

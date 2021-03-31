@@ -12,7 +12,7 @@ import models.senet as senet
 import models.modules as modules 
 import models.net as net
 from utils.loss_geolayout import * 
-from utils.train_utils import *
+from train_utils import *
 from utils.get_parameter_geolayout import *
 from train import * 
 from valid import * 
