@@ -35,17 +35,16 @@ def valid(args, device, valid_loader, model, epoch):
 
         parameter = model(image)
         average_plane_info = get_average_plane_info(parameter, layout_seg, face)
-        parameter_gt = get_parameter(depth)
+        parameter_gt = get_parameter(depth, layout_seg)
         loss = parameter_loss(parameter, parameter_gt) + \
             discrimitive_loss(parameter, layout_seg, face, average_plane_info, args.delta_v, args.delta_d) + \
             depth_loss(parameter, face, average_plane_info, layout_depth)
-        p, q, r, s = parameter 
-        depth_mine = get_depth_map(p, q, r, s)
+        depth_mine = get_depth_map(parameter)
         rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(depth_mine, layout_depth)
         end = time.time()
         the_time = end - start
 
-        result_string = ('Valid: Epoch: [{} / {}], Batch: [{} / {}], Time: {:.3f}, Loss: {:.4f}\n' \
+        result_string = ('Valid: Epoch: [{} / {}], Batch: [{} / {}], Time: {:.3f}s, Loss: {:.4f}\n' \
             + 'rms: {:.3f}, rel: {:.3f}, log10: {:.3f}, delta1: {:.3f}, delta2: {:.3f}, delta3: {:.3f}') \
             .format(epoch + 1, args.epochs, i + 1, len(train_loader), the_time, loss, \
                 rms, rel, rlog10, rate_1, rate_2, rate_3)

@@ -25,8 +25,6 @@ def train(args, device, train_loader, model, optimizer, epoch):
     print(train_loader)
     for i, (depth, image, init_label, layout_depth, layout_seg, intrinsic, norm) in enumerate(train_loader):
         start = time.time()
-
-        #depth, image, init_label, layout_depth, layout_seg, face, intrinsic, norm = the_data 
         image = image.to(device)
         layout_depth = layout_depth.to(device)
         layout_seg = layout_seg.to(device)
@@ -35,14 +33,13 @@ def train(args, device, train_loader, model, optimizer, epoch):
         
 
         optimizer.zero_grad()
-        print(image.size())
         parameter = model(image)
-        print(parameter.size())
+        
         average_plane_info = get_average_plane_info(parameter, layout_seg, face)
-        parameter_gt = get_parameter(depth)
-        loss = parameter_loss(parameter, parameter_gt) + \
-            discrimitive_loss(parameter, layout_seg, face, average_plane_info, args.delta_v, args.delta_d) + \
-            depth_loss(parameter, face, average_plane_info, layout_depth)
+        parameter_gt = get_parameter(depth, layout_seg)
+        loss = parameter_loss(parameter, parameter_gt) + depth_loss(face, layout_seg, average_plane_info, layout_depth)
+            #discrimitive_loss(parameter, layout_seg, face, average_plane_info, args.delta_v, args.delta_d) + \
+            
 
         loss.backward()
         optimizer.step()
@@ -50,7 +47,7 @@ def train(args, device, train_loader, model, optimizer, epoch):
         end = time.time()
         the_time = end - start
 
-        result_string = 'Train: Epoch: [{} / {}] Batch: [{} / {}] Time {:.3f} Loss {:.4f}' \
+        result_string = 'Train: Epoch: [{} / {}], Batch: [{} / {}], Time {:.3f}s, Loss {:.4f}' \
             .format(epoch + 1, args.epochs, i + 1, len(train_loader), the_time, loss)
         print(result_string)
         write_log(args, epoch, i, 'training', result_string)

@@ -15,7 +15,7 @@ def parameter_loss(parameter, parameter_gt):
     '''
     loss = torch.sum(torch.abs(parameter - parameter_gt))
     loss /= (len(parameter[0]) * len(parameter[0][0]) * len(parameter[0][0][0]))
-    return float(loss) 
+    return loss
 
 def discrimitive_loss(parameters, plane_seg_gt, plane_id_gt, average_plane_info, delta_v, delta_d):
     '''
@@ -103,7 +103,7 @@ def depth_loss(plane_id_gt, plane_seg_gt, average_plane_info, depth_gt):
     depth = get_average_depth_map(plane_id_gt, plane_seg_gt, average_plane_info)
     loss = torch.sum(torch.abs(depth - depth_gt))
     loss /= (len(depth[0]) * len(depth[0][0]) * len(depth[0][0][0]))
-    return float(loss)
+    return loss
 
 
 

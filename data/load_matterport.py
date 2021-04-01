@@ -60,6 +60,7 @@ class MatterPortDataSet(Dataset):
         self.points = []
         self.intrinsics = []
         self.faces = []
+        self.max_face_nums = []
         self.params = []
         self.norms_x = [] 
         self.norms_y = [] 
@@ -115,13 +116,18 @@ class MatterPortDataSet(Dataset):
 
                     faces = []
                     params = []
+                    max_id = -1
                     for j in range(len(the_model_faces)):
                         face = f[the_model_faces[j][0]][0][0]
                         param = f[the_model_params[j][0]][0][0]
                         faces.append(face)  
                         params.append(param)
+                        if face > max_id:
+                            max_id = face
+                    self.max_face_nums.append(max_id)
                     self.faces.append(faces) 
-                    self.params.append(params) 
+                    self.params.append(params)
+
                 
                     self.points.append(the_point)
 
@@ -201,7 +207,6 @@ class MatterPortDataSet(Dataset):
                                 transforms.ColorJitter(brightness = 0.4, contrast = 0.4, saturation = 0.4, )])
         self.transform_depth = transforms.Compose([transforms.Resize([152, 114]), transforms.ToTensor()])
         self.transform_seg = transforms.Compose([transforms.Resize([152, 114], interpolation = PIL.Image.NEAREST), transforms.ToTensor()])
-        #self.transform_seg = transforms.Compose([transforms.ToTensor()])
 
     def __getitem__(self, i):
         '''
@@ -226,7 +231,8 @@ class MatterPortDataSet(Dataset):
             nz = nz.resize(nz.size()[1], nz.size()[2])
             norm = torch.stack((nx, ny, nz))
             intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
-            return depth, image, init_label, layout_depth, layout_seg, intrinsic, norm
+            max_face_num = self.max_face_nums[i]
+            return depth, image, init_label, layout_depth, layout_seg, intrinsic, max_face_num
  
     def __len__(self):
         '''
@@ -242,7 +248,7 @@ def data_test():
     a = MatterPortDataSet('E:\\dataset\\geolayout', 'validation')
     i = 0
     print('length:', a.__len__())
-    depth, image, init_label, layout_depth, layout_seg, intrinsic, norm = a.__getitem__(i)
+    depth, image, init_label, layout_depth, layout_seg, intrinsic, max_face_num = a.__getitem__(i)
     print('filename:', a.layout_depth_filenames[i])
     print('filename:', a.layout_depth_filenames[i + 1])
     print('depth:', depth, depth.size())
@@ -251,14 +257,15 @@ def data_test():
     print('layout_depth:', layout_depth, layout_depth.size())
     print('layout_seg:', layout_seg, layout_seg.size())
     print('intrinsic:', intrinsic, intrinsic.shape)
-    print('norm:', norm, norm.size())
+    print('max_face_num:', max_face_num)
+    #print('norm:', norm, norm.size())
 
-
+    '''
     b = MatterPortDataSet('E:\\dataset\\geolayout', 'testing')
     j = 10
     print('length:', b.__len__())
     image, intrinsic = b.__getitem__(j)
     print('image:', image, image.size())
     print('intrinsic:', intrinsic, intrinsic.shape)
-
+    '''
 data_test()

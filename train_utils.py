@@ -90,13 +90,13 @@ def init_model(args):
     print(args)
     print('getting device...', end='')
     torch.manual_seed(args.seed)
-    if args.cuda == True:
+    if args.cuda == 1:
         torch.cuda.set_device(args.gpu_id)
         device = torch.device(args.gpu_id)
         torch.cuda.empty_cache()
     else:
         device = torch.device("cpu")
-    print('device got')
+    print(device)
 
     print('Initialize model')
     
