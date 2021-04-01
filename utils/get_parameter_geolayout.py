@@ -267,6 +267,5 @@ def utils_test():
             dr /= avg_r 
             ds /= avg_s
             print(i, the_id, count, dp, dq, dr, ds)
-    print(parameter_average)
-    print(parameters)
-utils_test()
+
+#utils_test()

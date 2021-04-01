@@ -91,16 +91,57 @@ def discrimitive_loss(parameters, plane_seg_gt, plane_id_gt, average_plane_info,
         total_loss += lvar 
         total_loss += dvar
     total_loss /= batch_size
+
+
+    batch_size = len(parameters)
+    lvar = torch.Tensor(0.0, requires_grad = True)
+    dvar = torch.Tensor(0.0, requires_grad = True)
+
+    for i in range(batch_size):
+        p = parameters[i][0]
+        q = parameters[i][1]
+        r = parameters[i][2]
+        s = parameters[i][3]
+        useful_mask = torch.zeros((len(average_plane_info[i])))
+
+        current_lvar = torch.Tensor(0.0, requires_grad = True)
+        for seg_id in range(len(average_plane_info[i])):
+            mask = torch.eq(plane_seg_gt[i][0], seg_id) 
+            count = mask.sum()
+            useful_mask[seg_id] = torch.ne(count, 0)
+            dp_total = mask * torch.abs(p - average_plane_info[i][seg_id][0])
+            dq_total = mask * torch.abs(q - average_plane_info[i][seg_id][1])
+            dr_total = mask * torch.abs(r - average_plane_info[i][seg_id][2])
+            ds_total = mask * torch.abs(s - average_plane_info[i][seg_id][3])
+            loss_total = torch.clamp(dp_total + dq_total + dr_total + ds_total - delta_v, min = 0)
+            mask_auxiliary = torch.eq(count, 0) #trick
+            count = count + mask_auxiliary
+            the_sum = loss_total.sum() / count 
+            current_lvar += the_sum 
+        C = useful_mask.sum()
+        current_lvar = current_lvar / C
+
+        current_dvar = torch.Tensor(0.0, requires_grad = True)
+        for ii in range(len(average_plane_info[i])):
+            for jj in range(len(average_plane_info[i])):
+                diff_param = average_plane_info[i][ii] - average_plane_info[i][jj]
+                the_sum = torch.clamp(delta_d - diff_param.sum(), min = 0)
+                current_dvar += the_sum 
+        current_dvar = current_dvar / (C * (C - 1))
+        lvar += current_lvar
+        dvar += current_dvar
+    total_loss = (lvar + dvar) / batch_size
+
+
     return total_loss
   
 
-def depth_loss(plane_id_gt, plane_seg_gt, average_plane_info, depth_gt):
+def depth_loss(depth, depth_gt):
     '''
     description: get the depth loss 
-    parameter: the ground truth plane ids and seg infos, the average pqrs info, ground truth
+    parameter: the depth calculated by the average plane info, ground truth
     return: depth loss
     '''
-    depth = get_average_depth_map(plane_id_gt, plane_seg_gt, average_plane_info)
     loss = torch.sum(torch.abs(depth - depth_gt))
     loss /= (len(depth[0]) * len(depth[0][0]) * len(depth[0][0][0]))
     return loss
@@ -113,21 +154,21 @@ def depth_loss(plane_id_gt, plane_seg_gt, average_plane_info, depth_gt):
 def loss_test():
     transform_depth = transforms.Compose([transforms.Resize([152, 114]), transforms.ToTensor()])
     transform_seg = transforms.Compose([transforms.Resize([152, 114], interpolation = PIL.Image.NEAREST), transforms.ToTensor()])
-    name = 'E:\\dataset\\geolayout\\validation\\layout_depth\\04cdd02138664b138f281bb5ad8b957f_i1_3_layout.png'
+    name = 'E:\\dataset\\geolayout\\training\\layout_depth\\0b2156c0034b43bc8b06023a4c4fe2db_i1_2_layout.png'
     depth_map_original_0 = Image.open(name).convert('I')
     depth_map_original_0 = transform_depth(depth_map_original_0) / 4000.0
-    name = 'E:\\dataset\\geolayout\\validation\\layout_depth\\075307518bc2495498609ee2ff6dd003_i1_2_layout.png'
+    name = 'E:\\dataset\\geolayout\\training\\layout_depth\\0b124e1ec3bf4e6fb2ec42f179cc9ff0_i1_5_layout.png' 
     depth_map_original_1 = Image.open(name).convert('I')
     depth_map_original_1 = transform_depth(depth_map_original_1) / 4000.0
     depth_map_original = torch.stack((depth_map_original_0, depth_map_original_1))
-    name = 'E:\\dataset\\geolayout\\validation\\layout_seg\\04cdd02138664b138f281bb5ad8b957f_i1_3_seg.png'
+    name = 'E:\\dataset\\geolayout\\training\\layout_seg\\0b2156c0034b43bc8b06023a4c4fe2db_i1_2_seg.png'
     plane_seg_0 = Image.open(name).convert('I')
     plane_seg_0 = transform_seg(plane_seg_0)
-    name = 'E:\\dataset\\geolayout\\validation\\layout_seg\\075307518bc2495498609ee2ff6dd003_i1_2_seg.png'
+    name = 'E:\\dataset\\geolayout\\training\\layout_seg\\0b124e1ec3bf4e6fb2ec42f179cc9ff0_i1_5_seg.png'
     plane_seg_1 = Image.open(name).convert('I')
-    plane_seg_1 = transform_depth(plane_seg_1)
-    plane_seg = torch.stack((plane_seg_0, plane_seg_1))  
-    print(depth_map_original.size(), plane_seg.size())
+    plane_seg_1 = transform_seg(plane_seg_1)
+    plane_seg = torch.stack((plane_seg_0, plane_seg_1)) 
+    plane_ids = get_plane_ids(plane_seg) 
 
     plane_ids = get_plane_ids(plane_seg)
 
