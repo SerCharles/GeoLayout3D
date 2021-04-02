@@ -14,10 +14,10 @@ def parameter_loss(parameter, parameter_gt):
     return: parameter loss
     '''
     loss = torch.sum(torch.abs(parameter - parameter_gt))
-    loss /= (len(parameter[0]) * len(parameter[0][0]) * len(parameter[0][0][0]))
+    loss /= (len(parameter) * len(parameter[0][0]) * len(parameter[0][0][0]))
     return loss
 
-def discrimitive_loss(parameters, plane_seg_gt, plane_id_gt, average_plane_info, delta_v, delta_d):
+def discrimitive_loss(parameters, plane_seg_gt, average_plane_info, delta_v, delta_d):
     '''
     description: get the discrimitive loss 
     parameter: the parameter driven by our model, the ground truth segmentation, the ground truth plane id
@@ -25,77 +25,8 @@ def discrimitive_loss(parameters, plane_seg_gt, plane_id_gt, average_plane_info,
     return: depth loss
     '''
     batch_size = len(parameters)
-    total_loss = 0
-    for i in range(batch_size):
-        C = len(plane_id_gt[i])
-        lvars = {}
-        lvar = 0
-        dvar = 0
-        for j in range(C):
-            t_id = int(plane_id_gt[i][j])
-            lvars[t_id] = {'count': 0, 'loss': 0.0} 
-    
-        p = parameters[i][0]
-        q = parameters[i][1]
-        r = parameters[i][2]
-        s = parameters[i][3]
-        #get lvars
-        for v in range(len(plane_seg_gt[i][0])) :
-            for u in range(len(plane_seg_gt[i][0][v])): 
-                the_seg = int(plane_seg_gt[i][0][v][u])
-                the_p = float(p[v][u])
-                the_q = float(q[v][u])
-                the_r = float(r[v][u])
-                the_s = float(s[v][u])
-                gt_p = average_plane_info[i][the_seg]['p']
-                gt_q = average_plane_info[i][the_seg]['q']
-                gt_r = average_plane_info[i][the_seg]['r']
-                gt_s = average_plane_info[i][the_seg]['s']
-
-                dp = abs(the_p - gt_p)
-                dq = abs(the_q - gt_q)
-                dr = abs(the_r - gt_r)
-                ds = abs(the_s - gt_s)
-
-                loss = max(0, dp + dq + dr + ds - delta_v)
-                lvars[the_seg]['count'] += 1 
-                lvars[the_seg]['loss'] += loss 
-        for the_id in plane_id_gt[i]: 
-            the_id = int(the_id)
-            the_average = lvars[the_id]['loss'] / lvars[the_id]['count']
-            lvar += the_average
-        lvar /= C 
-
-        #get dvar 
-        for ii in range(C - 1):
-            for jj in range(i + 1, C):
-                id_i = plane_id_gt[i][ii]
-                id_j = plane_id_gt[i][jj]
-                pi = average_plane_info[i][id_i]['p']
-                qi = average_plane_info[i][id_i]['q']
-                ri = average_plane_info[i][id_i]['r']
-                si = average_plane_info[i][id_i]['s']
-                pj = average_plane_info[i][id_j]['p']
-                qj = average_plane_info[i][id_j]['q']
-                rj = average_plane_info[i][id_j]['r']
-                sj = average_plane_info[i][id_j]['s']
-
-                dp = abs(pi - pj)
-                dq = abs(qi - qj) 
-                dr = abs(ri - rj)
-                ds = abs(si - sj)
-
-                loss = max(0, delta_d - dp - dq - dr - ds)
-                dvar += loss 
-        dvar /= (C * (C - 1))
-        total_loss += lvar 
-        total_loss += dvar
-    total_loss /= batch_size
-
-
-    batch_size = len(parameters)
-    lvar = torch.Tensor(0.0, requires_grad = True)
-    dvar = torch.Tensor(0.0, requires_grad = True)
+    lvar = torch.Tensor([0.0])
+    dvar = torch.Tensor([0.0])
 
     for i in range(batch_size):
         p = parameters[i][0]
@@ -104,7 +35,7 @@ def discrimitive_loss(parameters, plane_seg_gt, plane_id_gt, average_plane_info,
         s = parameters[i][3]
         useful_mask = torch.zeros((len(average_plane_info[i])))
 
-        current_lvar = torch.Tensor(0.0, requires_grad = True)
+        current_lvar = torch.Tensor([0.0])
         for seg_id in range(len(average_plane_info[i])):
             mask = torch.eq(plane_seg_gt[i][0], seg_id) 
             count = mask.sum()
@@ -121,17 +52,19 @@ def discrimitive_loss(parameters, plane_seg_gt, plane_id_gt, average_plane_info,
         C = useful_mask.sum()
         current_lvar = current_lvar / C
 
-        current_dvar = torch.Tensor(0.0, requires_grad = True)
-        for ii in range(len(average_plane_info[i])):
-            for jj in range(len(average_plane_info[i])):
-                diff_param = average_plane_info[i][ii] - average_plane_info[i][jj]
-                the_sum = torch.clamp(delta_d - diff_param.sum(), min = 0)
+        current_dvar = torch.Tensor([0.0])
+        for ii in range(len(average_plane_info[i]) - 1):
+            for jj in range(ii + 1, len(average_plane_info[i])):
+                diff_param = torch.abs(average_plane_info[i][ii] - average_plane_info[i][jj])
+                #diff_param = diff_param * useful_mask[ii] * useful_mask[jj]
+                diff = diff_param.sum()
+                the_sum = torch.clamp(delta_d - diff, min = 0)
+                the_sum = the_sum * useful_mask[ii] * useful_mask[jj]
                 current_dvar += the_sum 
-        current_dvar = current_dvar / (C * (C - 1))
+        current_dvar = current_dvar * 2 / (C * (C - 1)) 
         lvar += current_lvar
         dvar += current_dvar
     total_loss = (lvar + dvar) / batch_size
-
 
     return total_loss
   
@@ -143,7 +76,7 @@ def depth_loss(depth, depth_gt):
     return: depth loss
     '''
     loss = torch.sum(torch.abs(depth - depth_gt))
-    loss /= (len(depth[0]) * len(depth[0][0]) * len(depth[0][0][0]))
+    loss /= (len(depth) * len(depth[0][0]) * len(depth[0][0][0]))
     return loss
 
 
@@ -170,18 +103,18 @@ def loss_test():
     plane_seg = torch.stack((plane_seg_0, plane_seg_1)) 
     plane_ids = get_plane_ids(plane_seg) 
 
-    plane_ids = get_plane_ids(plane_seg)
 
 
     parameters = get_parameter(depth_map_original, plane_seg)
     depth_map = get_depth_map(parameters)
-    plane_info = get_average_plane_info(parameters, plane_seg, plane_ids)
-    depth_average = get_average_depth_map(plane_ids, plane_seg, plane_info)
-    parameters_avg = set_average_plane_info(plane_ids, plane_seg, plane_info)
+    max_num = get_plane_max_num(plane_seg)
+    plane_info = get_average_plane_info(parameters, plane_seg, max_num)
+    depth_average = get_average_depth_map(plane_seg, plane_info)
+    parameters_avg = set_average_plane_info(plane_seg, plane_info)
 
     loss_p = parameter_loss(parameters_avg, parameters)
-    loss_dis_1 = discrimitive_loss(parameters, plane_seg, plane_ids, plane_info, 0.1, 1.0)
-    loss_dis_2 = discrimitive_loss(parameters_avg, plane_seg, plane_ids, plane_info, 0.1, 1.0)
-    loss_d = depth_loss(plane_ids, plane_seg, plane_info, depth_map)
+    loss_dis_1 = discrimitive_loss(parameters, plane_seg, plane_info, 0.1, 1.0)
+    loss_dis_2 = discrimitive_loss(parameters_avg, plane_seg, plane_info, 0.1, 1.0)
+    loss_d = depth_loss(depth_average, depth_map)
     print(loss_p, loss_dis_1, loss_dis_2, loss_d)
 #loss_test()

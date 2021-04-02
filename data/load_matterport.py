@@ -260,12 +260,12 @@ def data_test():
     print('max_face_num:', max_face_num)
     #print('norm:', norm, norm.size())
 
-    '''
+    
     b = MatterPortDataSet('E:\\dataset\\geolayout', 'testing')
     j = 10
     print('length:', b.__len__())
     image, intrinsic = b.__getitem__(j)
     print('image:', image, image.size())
     print('intrinsic:', intrinsic, intrinsic.shape)
-    '''
-data_test()
+    
+#data_test()

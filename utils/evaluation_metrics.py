@@ -5,7 +5,7 @@ from PIL import Image
 import PIL
 import torch
 from torchvision import transforms
-from get_parameter_geolayout import *
+from utils.get_parameter_geolayout import *
 
 def log10(x):
     return torch.log(x) / log(10)
@@ -68,4 +68,4 @@ def metrics_test():
 
     rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(depth_average, depth_map)
     print(rms, rel, rlog10, rate_1, rate_2, rate_3)
-metrics_test()
+#metrics_test()
