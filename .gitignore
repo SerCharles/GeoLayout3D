@@ -16,7 +16,7 @@ PA3_RayTracing/bin
 *.mp4
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
-
+*.log
 *.ply
 
 # Build results

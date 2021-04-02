@@ -8,7 +8,6 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import PIL
-import cv2
 
 
 class MatterPortDataSet(Dataset):
@@ -60,7 +59,6 @@ class MatterPortDataSet(Dataset):
         self.points = []
         self.intrinsics = []
         self.faces = []
-        self.max_face_nums = []
         self.params = []
         self.norms_x = [] 
         self.norms_y = [] 
@@ -116,15 +114,12 @@ class MatterPortDataSet(Dataset):
 
                     faces = []
                     params = []
-                    max_id = -1
                     for j in range(len(the_model_faces)):
                         face = f[the_model_faces[j][0]][0][0]
                         param = f[the_model_params[j][0]][0][0]
                         faces.append(face)  
                         params.append(param)
-                        if face > max_id:
-                            max_id = face
-                    self.max_face_nums.append(max_id)
+
                     self.faces.append(faces) 
                     self.params.append(params)
 
@@ -152,6 +147,7 @@ class MatterPortDataSet(Dataset):
                         the_string += chr(item[0])
                     self.layout_seg_filenames.append(the_string)
 
+        '''
         self.depths = [] 
         self.images = [] 
         self.init_labels = [] 
@@ -178,22 +174,28 @@ class MatterPortDataSet(Dataset):
                 init_label = self.load_depth(init_label_name)
                 layout_depth = self.load_depth(layout_depth_name)
                 layout_seg = self.load_depth(layout_seg_name)
+
+                
                 nx = self.load_depth(nx_name)
                 ny = self.load_depth(ny_name)
                 nz = self.load_depth(nz_name)
                 boundary = self.load_depth(boundary_name)
                 radius = self.load_depth(radius_name)
-
+                
+                
                 self.depths.append(depth)
                 self.init_labels.append(init_label)
                 self.layout_depths.append(layout_depth)
                 self.layout_segs.append(layout_seg)
+
+                
                 self.norms_x.append(nx)  
                 self.norms_y.append(ny)  
                 self.norms_z.append(nz)  
-
                 self.boundarys.append(boundary) 
                 self.radiuss.append(radius)  
+                
+        '''
 
     def setTransform(self):
         '''
@@ -214,25 +216,55 @@ class MatterPortDataSet(Dataset):
         parameter: the index 
         return: the data
         '''
+
+        image_name = os.path.join(self.base_dir, self.type, 'image', self.image_filenames[i])
+        image = self.load_image(image_name)
+        if not self.type == 'testing':
+            base_name = self.depth_filenames[i][:-4]
+            depth_name = os.path.join(self.base_dir, self.type, 'depth', self.depth_filenames[i])
+            init_label_name = os.path.join(self.base_dir, self.type, 'init_label', self.init_label_filenames[i])
+            layout_depth_name = os.path.join(self.base_dir, self.type, 'layout_depth', self.layout_depth_filenames[i])
+            layout_seg_name = os.path.join(self.base_dir, self.type, 'layout_seg', self.layout_seg_filenames[i])
+            nx_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_nx.png')
+            ny_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_ny.png')
+            nz_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_nz.png')
+            boundary_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_boundary.png')
+            radius_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_radius.png')
+
+            depth = self.load_depth(depth_name)
+            init_label = self.load_depth(init_label_name)
+            layout_depth = self.load_depth(layout_depth_name)
+            layout_seg = self.load_depth(layout_seg_name)
+
+            '''
+            nx = self.load_depth(nx_name)
+            ny = self.load_depth(ny_name)
+            nz = self.load_depth(nz_name)
+            boundary = self.load_depth(boundary_name)
+            radius = self.load_depth(radius_name)
+            '''  
+                
         if self.type == 'testing':
-            image = self.transform_picture(self.images[i])
-            return image, self.intrinsics[i]
+            image = self.transform_picture(image)
+            intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
+            return image, intrinsic
         else:
-            depth = self.transform_depth(self.depths[i]) / 4000.0
-            image = self.transform_picture(self.images[i])
-            init_label = self.transform_seg(self.init_labels[i])
-            layout_depth = self.transform_depth(self.layout_depths[i]) / 4000.0
-            layout_seg = self.transform_seg(self.layout_segs[i])
-            nx = self.transform_depth(self.norms_x[i])
-            ny = self.transform_depth(self.norms_y[i])
-            nz = self.transform_depth(self.norms_z[i])
+            depth = self.transform_depth(depth) / 4000.0
+            image = self.transform_picture(image)
+            init_label = self.transform_seg(init_label)
+            layout_depth = self.transform_depth(layout_depth) / 4000.0
+            layout_seg = self.transform_seg(layout_seg)
+            '''
+            nx = self.transform_depth(nx)
+            ny = self.transform_depth(ny)
+            nz = self.transform_depth(nz)
             nx = nx.resize(nx.size()[1], nx.size()[2])
             ny = ny.resize(ny.size()[1], ny.size()[2])
             nz = nz.resize(nz.size()[1], nz.size()[2])
             norm = torch.stack((nx, ny, nz))
+            '''
             intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
-            max_face_num = self.max_face_nums[i]
-            return depth, image, init_label, layout_depth, layout_seg, intrinsic, max_face_num
+            return depth, image, init_label, layout_depth, layout_seg, intrinsic
  
     def __len__(self):
         '''
@@ -245,10 +277,10 @@ class MatterPortDataSet(Dataset):
 
 #unit test code
 def data_test():
-    a = MatterPortDataSet('E:\\dataset\\geolayout', 'validation')
+    a = MatterPortDataSet('E:\\dataset\\geolayout', 'training')
     i = 0
     print('length:', a.__len__())
-    depth, image, init_label, layout_depth, layout_seg, intrinsic, max_face_num = a.__getitem__(i)
+    depth, image, init_label, layout_depth, layout_seg, intrinsic = a.__getitem__(i)
     print('filename:', a.layout_depth_filenames[i])
     print('filename:', a.layout_depth_filenames[i + 1])
     print('depth:', depth, depth.size())
@@ -257,7 +289,6 @@ def data_test():
     print('layout_depth:', layout_depth, layout_depth.size())
     print('layout_seg:', layout_seg, layout_seg.size())
     print('intrinsic:', intrinsic, intrinsic.shape)
-    print('max_face_num:', max_face_num)
     #print('norm:', norm, norm.size())
 
     

@@ -111,7 +111,7 @@ def init_model(args):
 
 
     print('Getting dataset')
-    dataset_training = MatterPortDataSet(args.data_dir, 'validation')
+    dataset_training = MatterPortDataSet(args.data_dir, 'training')
     dataset_validation = MatterPortDataSet(args.data_dir, 'validation')
     dataloader_training =  DataLoader(dataset_training, batch_size = args.batch_size, shuffle = True, num_workers = 2)
     dataloader_validation = DataLoader(dataset_validation, batch_size = args.batch_size, shuffle = True, num_workers = 2)

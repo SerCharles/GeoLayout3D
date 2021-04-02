@@ -22,8 +22,8 @@ def train(args, device, train_loader, model, optimizer, epoch):
     return: the model trained
     '''
     model.train()
-    print(train_loader)
-    for i, (depth, image, init_label, layout_depth, layout_seg, intrinsic, norm) in enumerate(train_loader):
+    #print(train_loader)
+    for i, (depth, image, init_label, layout_depth, layout_seg, intrinsic) in enumerate(train_loader):
         start = time.time()
         image = image.to(device)
         layout_depth = layout_depth.to(device)
@@ -34,11 +34,22 @@ def train(args, device, train_loader, model, optimizer, epoch):
 
         optimizer.zero_grad()
         parameter = model(image)
-        
-        average_plane_info = get_average_plane_info(parameter, layout_seg, face)
+
+        max_num = get_plane_max_num(layout_seg)
+        average_plane_info = get_average_plane_info(parameter, layout_seg, max_num)
         parameter_gt = get_parameter(depth, layout_seg)
-        loss = parameter_loss(parameter, parameter_gt) + depth_loss(face, layout_seg, average_plane_info, layout_depth)
-            #discrimitive_loss(parameter, layout_seg, face, average_plane_info, args.delta_v, args.delta_d) + \
+        average_depth = get_average_depth_map(layout_seg, average_plane_info)
+
+        '''
+        print('parameter:', parameter.requires_grad)
+        print('average_plane_info:', average_plane_info.requires_grad)
+        print('parameter_gt:', parameter_gt.requires_grad)
+        print('average_depth:', average_depth.requires_grad)
+        '''
+        
+        loss = parameter_loss(parameter, parameter_gt) + \
+            depth_loss(average_depth, layout_depth) + \
+            discrimitive_loss(parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d)
             
 
         loss.backward()
@@ -48,7 +59,7 @@ def train(args, device, train_loader, model, optimizer, epoch):
         the_time = end - start
 
         result_string = 'Train: Epoch: [{} / {}], Batch: [{} / {}], Time {:.3f}s, Loss {:.4f}' \
-            .format(epoch + 1, args.epochs, i + 1, len(train_loader), the_time, loss)
+            .format(epoch + 1, args.epochs, i + 1, len(train_loader), the_time, loss.item())
         print(result_string)
         write_log(args, epoch, i, 'training', result_string)
     return model
