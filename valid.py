@@ -23,7 +23,7 @@ def valid(args, device, valid_loader, model, epoch):
     return: empty
     '''
     model.eval()
-    for i, (depth, image, init_label, layout_depth, layout_seg, intrinsic) in enumerate(valid_loader):
+    for i, (image, layout_depth, layout_seg, intrinsic) in enumerate(valid_loader):
         start = time.time()
 
         image = image.to(device)
@@ -36,13 +36,13 @@ def valid(args, device, valid_loader, model, epoch):
         parameter = model(image)
 
         max_num = get_plane_max_num(layout_seg)
-        average_plane_info = get_average_plane_info(parameter, layout_seg, max_num)
-        parameter_gt = get_parameter(depth, layout_seg)
-        average_depth = get_average_depth_map(layout_seg, average_plane_info)
+        average_plane_info = get_average_plane_info(device, parameter, layout_seg, max_num)
+        parameter_gt = get_parameter(device, layout_depth, layout_seg)
+        average_depth = get_average_depth_map(device, layout_seg, average_plane_info)
 
         loss = parameter_loss(parameter, parameter_gt) + \
             depth_loss(average_depth, layout_depth) + \
-            discrimitive_loss(parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d)
+            discrimitive_loss(device, parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d)
         
         depth_mine = get_depth_map(parameter)
         rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(depth_mine, layout_depth)

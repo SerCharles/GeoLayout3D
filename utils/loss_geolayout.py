@@ -25,21 +25,21 @@ def discrimitive_loss(parameters, plane_seg_gt, average_plane_info, delta_v, del
     return: depth loss
     '''
     batch_size = len(parameters)
-    lvar = torch.Tensor([0.0])
-    dvar = torch.Tensor([0.0])
+    lvar = [] 
+    dvar = []
 
     for i in range(batch_size):
         p = parameters[i][0]
         q = parameters[i][1]
         r = parameters[i][2]
         s = parameters[i][3]
-        useful_mask = torch.zeros((len(average_plane_info[i])))
+        useful_mask = []
 
-        current_lvar = torch.Tensor([0.0])
+        current_lvar = []
         for seg_id in range(len(average_plane_info[i])):
             mask = torch.eq(plane_seg_gt[i][0], seg_id) 
             count = mask.sum()
-            useful_mask[seg_id] = torch.ne(count, 0)
+            useful_mask.append(torch.ne(count, 0).unsqueeze(0))
             dp_total = mask * torch.abs(p - average_plane_info[i][seg_id][0])
             dq_total = mask * torch.abs(q - average_plane_info[i][seg_id][1])
             dr_total = mask * torch.abs(r - average_plane_info[i][seg_id][2])
@@ -48,23 +48,26 @@ def discrimitive_loss(parameters, plane_seg_gt, average_plane_info, delta_v, del
             mask_auxiliary = torch.eq(count, 0) #trick
             count = count + mask_auxiliary
             the_sum = loss_total.sum() / count 
-            current_lvar += the_sum 
+            current_lvar.append(the_sum.unsqueeze(0))
+        useful_mask = torch.cat(useful_mask)
+        current_lvar = torch.cat(current_lvar)
         C = useful_mask.sum()
-        current_lvar = current_lvar / C
+        lvar.append((current_lvar.sum() / C).unsqueeze(0))
 
-        current_dvar = torch.Tensor([0.0])
+        current_dvar = []
         for ii in range(len(average_plane_info[i]) - 1):
             for jj in range(ii + 1, len(average_plane_info[i])):
                 diff_param = torch.abs(average_plane_info[i][ii] - average_plane_info[i][jj])
-                #diff_param = diff_param * useful_mask[ii] * useful_mask[jj]
                 diff = diff_param.sum()
                 the_sum = torch.clamp(delta_d - diff, min = 0)
                 the_sum = the_sum * useful_mask[ii] * useful_mask[jj]
-                current_dvar += the_sum 
-        current_dvar = current_dvar * 2 / (C * (C - 1)) 
-        lvar += current_lvar
-        dvar += current_dvar
-    total_loss = (lvar + dvar) / batch_size
+                current_dvar.append(the_sum.unsqueeze(0))
+        current_dvar = torch.cat(current_dvar) 
+        dvar_result = current_dvar.sum() * 2 / C / (C - 1)
+        dvar.append(dvar_result.unsqueeze(0))
+    lvar = torch.cat(lvar)
+    dvar = torch.cat(dvar)
+    total_loss = (lvar + dvar).sum() / batch_size
 
     return total_loss
   
@@ -104,13 +107,13 @@ def loss_test():
     plane_ids = get_plane_ids(plane_seg) 
 
 
-
-    parameters = get_parameter(depth_map_original, plane_seg)
-    depth_map = get_depth_map(parameters)
+    device = torch.device("cpu")
+    parameters = get_parameter(device, depth_map_original, plane_seg)
+    depth_map = get_depth_map(device, parameters)
     max_num = get_plane_max_num(plane_seg)
-    plane_info = get_average_plane_info(parameters, plane_seg, max_num)
-    depth_average = get_average_depth_map(plane_seg, plane_info)
-    parameters_avg = set_average_plane_info(plane_seg, plane_info)
+    plane_info = get_average_plane_info(device, parameters, plane_seg, max_num)
+    depth_average = get_average_depth_map(device, plane_seg, plane_info)
+    parameters_avg = set_average_plane_info(device, plane_seg, plane_info)
 
     loss_p = parameter_loss(parameters_avg, parameters)
     loss_dis_1 = discrimitive_loss(parameters, plane_seg, plane_info, 0.1, 1.0)
