@@ -29,8 +29,8 @@ def depth_metrics(depth_map, depth_map_gt):
 
     max_ratio = torch.max(depth_map / depth_map_gt, depth_map_gt / depth_map)
     rate_1 = float((max_ratio < 1.25).float().mean())
-    rate_2 = float((max_ratio < 1.25 ** 2).float().mean())
-    rate_3 = float((max_ratio < 1.25 ** 3).float().mean())
+    rate_2 = float((max_ratio < (1.25 ** 2)).float().mean())
+    rate_3 = float((max_ratio < (1.25 ** 3)).float().mean())
 
     return rms, rel, rlog10, rate_1, rate_2, rate_3
 

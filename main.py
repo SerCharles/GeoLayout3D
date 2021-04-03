@@ -20,9 +20,11 @@ from valid import *
 def main():
     args = init_args()
     device, dataset_training, dataset_validation, model, optimizer = init_model(args)
+    #valid(args, device, dataset_validation, model, 0)
     for i in range(args.epochs):
         model = train(args, device, dataset_training, model, optimizer, i)
-        valid(args, device, dataset_validation, model, i)
+        if i % 10 == 0:
+            valid(args, device, dataset_validation, model, i)
 
 if __name__ == "__main__":
     main()

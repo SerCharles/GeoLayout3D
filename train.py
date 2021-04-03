@@ -39,12 +39,6 @@ def train(args, device, train_loader, model, optimizer, epoch):
         parameter_gt = get_parameter(device, layout_depth, layout_seg)
         average_depth = get_average_depth_map(device, layout_seg, average_plane_info)
 
-        '''
-        print('parameter:', parameter.requires_grad)
-        print('average_plane_info:', average_plane_info.requires_grad)
-        print('parameter_gt:', parameter_gt.requires_grad)
-        print('average_depth:', average_depth.requires_grad)
-        '''
         
         loss = parameter_loss(parameter, parameter_gt) + \
             depth_loss(average_depth, layout_depth) + \

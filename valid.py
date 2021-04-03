@@ -30,7 +30,6 @@ def valid(args, device, valid_loader, model, epoch):
         layout_depth = layout_depth.to(device)
         layout_seg = layout_seg.to(device)
         intrinsic = intrinsic.to(device)
-        face = get_plane_ids(layout_seg)
 
 
         parameter = model(image)
@@ -44,14 +43,14 @@ def valid(args, device, valid_loader, model, epoch):
             depth_loss(average_depth, layout_depth) + \
             discrimitive_loss(parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d)
         
-        depth_mine = get_depth_map(parameter)
+        depth_mine = get_depth_map(device, parameter)
         rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(depth_mine, layout_depth)
         end = time.time()
         the_time = end - start
 
         result_string = ('Valid: Epoch: [{} / {}], Batch: [{} / {}], Time: {:.3f}s, Loss: {:.4f}\n' \
             + 'rms: {:.3f}, rel: {:.3f}, log10: {:.3f}, delta1: {:.3f}, delta2: {:.3f}, delta3: {:.3f}') \
-            .format(epoch + 1, args.epochs, i + 1, len(train_loader), the_time, loss.item(), \
+            .format(epoch + 1, args.epochs, i + 1, len(valid_loader), the_time, loss.item(), \
                 rms, rel, rlog10, rate_1, rate_2, rate_3)
         write_log(args, epoch, i, 'validation', result_string)
         print(result_string)
