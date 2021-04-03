@@ -48,7 +48,7 @@ def train(args, device, train_loader, model, optimizer, epoch):
         
         loss = parameter_loss(parameter, parameter_gt) + \
             depth_loss(average_depth, layout_depth) + \
-            discrimitive_loss(device, parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d)
+            discrimitive_loss(parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d)
             
 
         loss.backward()

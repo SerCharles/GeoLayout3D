@@ -28,7 +28,7 @@ def init_args():
                     help = 'manual epoch number (useful on restarts)')
     parser.add_argument('--learning_rate', '--lr', default = 1e-4, type = float)
     parser.add_argument('--weight_decay', '--wd',  default = 1e-4, type = float)
-    parser.add_argument('--batch_size', '--bs', default = 8, type = int)
+    parser.add_argument('--batch_size', '--bs', default = 4, type = int)
     parser.add_argument('--delta_v', default = 0.1, type = float)
     parser.add_argument('--delta_d', default = 1.0, type = float)
     parser.add_argument('--alpha', default = 0.5, type = float)

@@ -42,7 +42,7 @@ def valid(args, device, valid_loader, model, epoch):
 
         loss = parameter_loss(parameter, parameter_gt) + \
             depth_loss(average_depth, layout_depth) + \
-            discrimitive_loss(device, parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d)
+            discrimitive_loss(parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d)
         
         depth_mine = get_depth_map(parameter)
         rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(depth_mine, layout_depth)
