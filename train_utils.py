@@ -96,6 +96,8 @@ def init_model(args):
         torch.cuda.empty_cache()
     else:
         device = torch.device("cpu")
+    torch.backends.cudnn.enabled = True
+    torch.backends.cudnn.benchmark = True
     print(device)
 
     print('Initialize model')
@@ -103,6 +105,7 @@ def init_model(args):
     original_model = senet.senet154(pretrained='imagenet')
     Encoder = modules.E_senet(original_model)
     model = net.model(Encoder, num_features = 2048, block_channel = [256, 512, 1024, 2048])
+
     if device:
         model.to(device)
 
@@ -113,8 +116,8 @@ def init_model(args):
     print('Getting dataset')
     dataset_training = MatterPortDataSet(args.data_dir, 'training')
     dataset_validation = MatterPortDataSet(args.data_dir, 'validation')
-    dataloader_training =  DataLoader(dataset_training, batch_size = args.batch_size, shuffle = True, num_workers = 2)
-    dataloader_validation = DataLoader(dataset_validation, batch_size = args.batch_size, shuffle = True, num_workers = 2)
+    dataloader_training =  DataLoader(dataset_training, batch_size = args.batch_size, shuffle = True, num_workers = 5)
+    dataloader_validation = DataLoader(dataset_validation, batch_size = args.batch_size, shuffle = True, num_workers = 5)
     print('Data got!')
 
     return device, dataloader_training, dataloader_validation, model, optimizer

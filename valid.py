@@ -31,20 +31,20 @@ def valid(args, device, valid_loader, model, epoch):
         layout_seg = layout_seg.to(device)
         intrinsic = intrinsic.to(device)
 
+        with torch.no_grad():
+            parameter = model(image)
 
-        parameter = model(image)
+            max_num = get_plane_max_num(layout_seg)
+            average_plane_info = get_average_plane_info(device, parameter, layout_seg, max_num)
+            parameter_gt = get_parameter(device, layout_depth, layout_seg)
+            average_depth = get_average_depth_map(device, layout_seg, average_plane_info)
 
-        max_num = get_plane_max_num(layout_seg)
-        average_plane_info = get_average_plane_info(device, parameter, layout_seg, max_num)
-        parameter_gt = get_parameter(device, layout_depth, layout_seg)
-        average_depth = get_average_depth_map(device, layout_seg, average_plane_info)
-
-        loss = parameter_loss(parameter, parameter_gt) + \
-            depth_loss(average_depth, layout_depth) + \
-            discrimitive_loss(parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d)
+            loss = parameter_loss(parameter, parameter_gt) + \
+                depth_loss(average_depth, layout_depth) + \
+                discrimitive_loss(parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d)
         
-        depth_mine = get_depth_map(device, parameter)
-        rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(depth_mine, layout_depth)
+            depth_mine = get_depth_map(device, parameter)
+            rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(depth_mine, layout_depth)
         end = time.time()
         the_time = end - start
 
@@ -54,4 +54,5 @@ def valid(args, device, valid_loader, model, epoch):
                 rms, rel, rlog10, rate_1, rate_2, rate_3)
         write_log(args, epoch, i, 'validation', result_string)
         print(result_string)
+    save_checkpoint(args, model.state_dict(), epoch)
  

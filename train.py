@@ -23,6 +23,7 @@ def train(args, device, train_loader, model, optimizer, epoch):
     '''
     model.train()
     #print(train_loader)
+    adjust_learning_rate(args, optimizer, epoch)
     for i, (image, layout_depth, layout_seg, intrinsic) in enumerate(train_loader):
         start = time.time()
         image = image.to(device)
