@@ -8,6 +8,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import PIL
+import matterport_transform
 
 
 class MatterPortDataSet(Dataset):
@@ -203,12 +204,14 @@ class MatterPortDataSet(Dataset):
         parameter: empty
         return: empty
         '''
+        self.transform_all = transforms.Compose([matterport_transform.Scale([320, 240]),\
+             matterport_transform.RandomCrop([304, 228], [152, 114])])
         self.transform_picture = transforms.Compose([
-                                transforms.RandomResizedCrop([304, 228]),
                                 transforms.ToTensor(),
                                 transforms.ColorJitter(brightness = 0.4, contrast = 0.4, saturation = 0.4, )])
-        self.transform_depth = transforms.Compose([transforms.Resize([152, 114]), transforms.ToTensor()])
-        self.transform_seg = transforms.Compose([transforms.Resize([152, 114], interpolation = PIL.Image.NEAREST), transforms.ToTensor()])
+        self.transform_depth = transforms.Compose([transforms.ToTensor()])
+        self.transform_picture_test = transforms.Compose([transforms.RandomCrop([304, 228]), transforms.ToTensor()])
+
 
     def __getitem__(self, i):
         '''
@@ -245,24 +248,21 @@ class MatterPortDataSet(Dataset):
             '''  
                 
         if self.type == 'testing':
-            image = self.transform_picture(image)
+            image = self.transform_picture_test(image)
             intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
             return image, intrinsic
-        else:
-            #depth = self.transform_depth(depth) / 4000.0
-            image = self.transform_picture(image)
-            #init_label = self.transform_seg(init_label)
+        elif self.type == 'validation':
+            image, layout_depth, layout_seg = self.transform_all((image, layout_depth, layout_seg))
+            image = self.transform_depth(image)
             layout_depth = self.transform_depth(layout_depth) / 4000.0
-            layout_seg = self.transform_seg(layout_seg)
-            '''
-            nx = self.transform_depth(nx)
-            ny = self.transform_depth(ny)
-            nz = self.transform_depth(nz)
-            nx = nx.resize(nx.size()[1], nx.size()[2])
-            ny = ny.resize(ny.size()[1], ny.size()[2])
-            nz = nz.resize(nz.size()[1], nz.size()[2])
-            norm = torch.stack((nx, ny, nz))
-            '''
+            layout_seg = self.transform_depth(layout_seg)
+            intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
+            return image, layout_depth, layout_seg, intrinsic
+        else: 
+            image, layout_depth, layout_seg = self.transform_all((image, layout_depth, layout_seg))
+            image = self.transform_picture(image)
+            layout_depth = self.transform_depth(layout_depth) / 4000.0
+            layout_seg = self.transform_depth(layout_seg)
             intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
             return image, layout_depth, layout_seg, intrinsic
  
@@ -299,4 +299,4 @@ def data_test():
     print('image:', image, image.size())
     print('intrinsic:', intrinsic, intrinsic.shape)
     
-#data_test()
+data_test()

@@ -5,6 +5,7 @@ from PIL import Image
 import PIL
 import torch
 from torchvision import transforms
+import time
 
 
 def get_parameter(device, depth_map, plane_seg):
@@ -199,27 +200,29 @@ def get_plane_ids(plane_seg):
 
 #unit test code
 def utils_test():
+    start = time.time()
     transform_depth = transforms.Compose([transforms.Resize([152, 114]), transforms.ToTensor()])
+    transform_original = transforms.Compose([transforms.ToTensor()])
     transform_seg = transforms.Compose([transforms.Resize([152, 114], interpolation = PIL.Image.NEAREST), transforms.ToTensor()])
     name = 'E:\\dataset\\geolayout\\training\\layout_depth\\0b2156c0034b43bc8b06023a4c4fe2db_i1_2_layout.png'
-    depth_map_original_0 = Image.open(name).convert('I')
-    depth_map_original_0 = transform_depth(depth_map_original_0) / 4000.0
+    depth_map_original_0_load = Image.open(name).convert('I')
+    depth_map_original_0 = transform_depth(depth_map_original_0_load) / 4000.0
     name = 'E:\\dataset\\geolayout\\training\\layout_depth\\0b124e1ec3bf4e6fb2ec42f179cc9ff0_i1_5_layout.png' 
-    depth_map_original_1 = Image.open(name).convert('I')
-    depth_map_original_1 = transform_depth(depth_map_original_1) / 4000.0
+    depth_map_original_1_load = Image.open(name).convert('I')
+    depth_map_original_1 = transform_depth(depth_map_original_1_load) / 4000.0
     depth_map_original = torch.stack((depth_map_original_0, depth_map_original_1))
     name = 'E:\\dataset\\geolayout\\training\\layout_seg\\0b2156c0034b43bc8b06023a4c4fe2db_i1_2_seg.png'
-    plane_seg_0 = Image.open(name).convert('I')
-    plane_seg_0 = transform_seg(plane_seg_0)
+    plane_seg_0_load = Image.open(name).convert('I')
+    plane_seg_0 = transform_seg(plane_seg_0_load)
     name = 'E:\\dataset\\geolayout\\training\\layout_seg\\0b124e1ec3bf4e6fb2ec42f179cc9ff0_i1_5_seg.png'
-    plane_seg_1 = Image.open(name).convert('I')
-    plane_seg_1 = transform_seg(plane_seg_1)
+    plane_seg_1_load = Image.open(name).convert('I')
+    plane_seg_1 = transform_seg(plane_seg_1_load)
     plane_seg = torch.stack((plane_seg_0, plane_seg_1)) 
     plane_ids = get_plane_ids(plane_seg) 
-    print(depth_map_original.size(), plane_seg.size())
     device = torch.device("cpu")
 
     parameters = get_parameter(device, depth_map_original, plane_seg)
+
     depth_map = get_depth_map(device, parameters)
     print(parameters.shape) 
     print(depth_map_original.shape, depth_map.shape)
@@ -285,4 +288,4 @@ def utils_test():
             ds /= avg_s
             print(i, the_id, count, dp, dq, dr, ds)
 
-#utils_test()
+utils_test()
