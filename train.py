@@ -37,7 +37,7 @@ def train(args, device, train_loader, model, optimizer, epoch):
 
         max_num = get_plane_max_num(layout_seg)
         average_plane_info = get_average_plane_info(device, parameter, layout_seg, max_num)
-        parameter_gt = get_parameter(device, layout_depth, layout_seg)
+        parameter_gt = get_parameter(device, layout_depth, layout_seg, args.epsilon)
         average_depth = get_average_depth_map(device, layout_seg, average_plane_info)
 
         

@@ -7,14 +7,12 @@ import torch
 from torchvision import transforms
 
 
-def get_parameter(device, depth_map, plane_seg):
+def get_parameter(device, depth_map, plane_seg, epsilon):
     '''
     description: get the ground truth parameters(p, q, r, s) from the depth map
-    parameter: depth map, plane_seg
+    parameter: depth map, plane_seg, epsilon
     return: the (p, q, r, s) value of all pixels
     '''
-
-    epsilon = 1e-4
     p_list = []
     q_list = []
     r_list = []
@@ -95,9 +93,9 @@ def get_depth_map(device, parameters):
 
     size_v = len(p[0][0])
     size_u = len(p[0][0][0])
-    vv = torch.arange(0, size_v, step = 1, device = device).reshape(1, 1, size_v, 1)
-    uu = torch.arange(0, size_u, step = 1, device = device).reshape(1, 1, 1, size_u)
-    depth_map = torch.pow((p * uu + q * vv + r) * s, -1)
+    v = torch.arange(0, size_v, step = 1, device = device, requires_grad = False).reshape(1, 1, size_v, 1)
+    u = torch.arange(0, size_u, step = 1, device = device, requires_grad = False).reshape(1, 1, 1, size_u)
+    depth_map = torch.pow((p * u + q * v + r) * s, -1)
     return depth_map
 
 def get_plane_max_num(plane_seg):
@@ -152,8 +150,8 @@ def get_average_depth_map(device, plane_seg, average_plane_info):
             q = average_plane_info[i][the_id][1]
             r = average_plane_info[i][the_id][2]
             s = average_plane_info[i][the_id][3]
-            v = torch.arange(0, size_v, step = 1, device = device).reshape(size_v, 1).repeat(1, size_u)
-            u = torch.arange(0, size_u, step = 1, device = device).reshape(1, size_u).repeat(size_v, 1)
+            v = torch.arange(0, size_v, step = 1, device = device, requires_grad = False).reshape(size_v, 1)
+            u = torch.arange(0, size_u, step = 1, device = device, requires_grad = False).reshape(1, size_u)
 
             mask = torch.eq(plane_seg[i][0], the_id)
             reverse_mask = torch.ne(plane_seg[i][0], the_id)
@@ -241,7 +239,7 @@ def utils_test():
     plane_ids = get_plane_ids(plane_seg) 
     device = torch.device("cpu")
 
-    parameters = get_parameter(device, depth_map_original, plane_seg)
+    parameters = get_parameter(device, depth_map_original, plane_seg, 1e-4)
 
 
     depth_map = get_depth_map(device, parameters)
@@ -279,10 +277,10 @@ def utils_test():
 
     parameter_average = set_average_plane_info(device, plane_seg, plane_info)
     for i in range(len(plane_ids)):
-        avg_p = torch.mean(parameters[i][0])
-        avg_q = torch.mean(parameters[i][1])
-        avg_r = torch.mean(parameters[i][2])
-        avg_s = torch.mean(parameters[i][3])
+        avg_p = torch.abs(torch.mean(parameters[i][0]))
+        avg_q = torch.abs(torch.mean(parameters[i][1]))
+        avg_r = torch.abs(torch.mean(parameters[i][2]))
+        avg_s = torch.abs(torch.mean(parameters[i][3]))
 
         for the_id in plane_ids[i]:
             count = 0

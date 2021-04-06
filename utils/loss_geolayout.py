@@ -78,7 +78,9 @@ def depth_loss(depth, depth_gt):
     parameter: the depth calculated by the average plane info, ground truth
     return: depth loss
     '''
-    loss = torch.sum(torch.abs(depth - depth_gt))
+    depth_frac = torch.pow(depth, -1)
+    depth_gt_frac = torch.pow(depth_gt, -1)
+    loss = torch.sum(torch.abs(depth_frac - depth_gt_frac))
     loss /= (len(depth) * len(depth[0][0]) * len(depth[0][0][0]))
     return loss
 
@@ -108,7 +110,7 @@ def loss_test():
 
 
     device = torch.device("cpu")
-    parameters = get_parameter(device, depth_map_original, plane_seg)
+    parameters = get_parameter(device, depth_map_original, plane_seg, 1e-4)
     depth_map = get_depth_map(device, parameters)
     max_num = get_plane_max_num(plane_seg)
     plane_info = get_average_plane_info(device, parameters, plane_seg, max_num)
