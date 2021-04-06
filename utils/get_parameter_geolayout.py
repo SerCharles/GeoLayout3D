@@ -5,7 +5,6 @@ from PIL import Image
 import PIL
 import torch
 from torchvision import transforms
-import time
 
 
 def get_parameter(device, depth_map, plane_seg):
@@ -14,51 +13,68 @@ def get_parameter(device, depth_map, plane_seg):
     parameter: depth map, plane_seg
     return: the (p, q, r, s) value of all pixels
     '''
-    epsilon = 0.1
-    p = torch.zeros(depth_map.size(), dtype = float, device = device, requires_grad = False)  
-    q = torch.zeros(depth_map.size(), dtype = float, device = device, requires_grad = False)  
-    r = torch.zeros(depth_map.size(), dtype = float, device = device, requires_grad = False)  
-    s = torch.zeros(depth_map.size(), dtype = float, device = device, requires_grad = False)  
-    for i in range(len(depth_map)):
-        for v in range(len(depth_map[i][0])):
-            for u in range(len(depth_map[i][0][v])): 
-                depth_pivot = max(float(depth_map[i][0][v][u]), 0)
-                if u != len(depth_map[i][0][v]) - 1:
-                    depth_u_up = max(float(depth_map[i][0][v][u + 1]), epsilon)
-                else: 
-                    depth_u_up = epsilon
-                if u != 0:
-                    depth_u_down = max(float(depth_map[i][0][v][u - 1]), epsilon)
-                else: 
-                    depth_u_down = epsilon
-                if v != len(depth_map[i][0]) - 1:
-                    depth_v_up = max(float(depth_map[i][0][v + 1][u]), epsilon)
-                else: 
-                    depth_v_up = epsilon
-                if v != 0:
-                    depth_v_down = max(float(depth_map[i][0][v - 1][u]), epsilon)
-                else: 
-                    depth_v_down = epsilon
 
-                if u != len(depth_map[i][0][v]) - 1 and int(plane_seg[i][0][v][u + 1]) == int(plane_seg[i][0][v][u]):
-                    pp = 1.0 / depth_u_up  - 1.0 / depth_pivot
-                else: 
-                    pp = 1.0 / depth_pivot - 1.0 / depth_u_down
-                if v != len(depth_map[i][0]) - 1 and int(plane_seg[i][0][v + 1][u]) == int(plane_seg[i][0][v][u]):
-                    qq = 1.0 / depth_v_up - 1.0 / depth_pivot
-                else: 
-                    qq = 1.0 / depth_pivot - 1.0 / depth_v_down
-                rr = 1 / depth_pivot - pp * u - qq * v
-                ss = sqrt(pp ** 2 + qq ** 2 + rr ** 2) 
-                pp /= ss 
-                qq /= ss 
-                rr /= ss 
-                p[i][0][v][u] = pp 
-                q[i][0][v][u] = qq 
-                r[i][0][v][u] = rr 
-                s[i][0][v][u] = ss 
-    parameters = torch.cat((p, q, r, s), dim = 1)
+    epsilon = 0.1
+    p_list = []
+    q_list = []
+    r_list = []
+    s_list = []
+    for i in range(len(depth_map)):
+        depth_pivot = depth_map[i][0]
+        depth_pivot = torch.clamp(depth_pivot, min = epsilon)
+        size_v = len(depth_map[i][0])
+        size_u = len(depth_map[i][0][0])
+        empty_dv = torch.ones((1, size_u), dtype = float, device = device, requires_grad = False) * epsilon
+        empty_du = torch.ones((size_v, 1), dtype = float, device = device, requires_grad = False) * epsilon
+        depth_v_up = torch.cat((depth_pivot[1 : , : ], empty_dv), dim = 0)
+        depth_v_down = torch.cat((empty_dv, depth_pivot[0 : size_v - 1, : ]), dim = 0)
+        depth_u_up = torch.cat((depth_pivot[ : , 1 : ], empty_du), dim = 1)
+        depth_u_down = torch.cat((empty_du, depth_pivot[ : , 0 : size_u - 1]), dim = 1)
+
+        frac_pivot = torch.pow(depth_pivot, -1)
+        diff_v_up = torch.pow(depth_v_up, -1) - frac_pivot
+        diff_v_down = frac_pivot - torch.pow(depth_v_down, -1)
+        diff_u_up = torch.pow(depth_u_up, -1) - frac_pivot
+        diff_u_down = frac_pivot - torch.pow(depth_u_down, -1)
+
+
+        false_dv = torch.zeros((1, size_u), dtype = bool, device = device, requires_grad = False)
+        false_du = torch.zeros((size_v, 1), dtype = bool, device = device, requires_grad = False)
+        mask_v = torch.eq(plane_seg[i][0][1 : , : ], plane_seg[i][0][0 : size_v - 1, :])
+        mask_u = torch.eq(plane_seg[i][0][ : , 1 : ], plane_seg[i][0][ : , 0 : size_u - 1])
+        mask_v_up = torch.cat((mask_v, false_dv), dim = 0)
+        mask_u_up = torch.cat((mask_u, false_du), dim = 1)
+        mask_v_down = torch.eq(mask_v_up, 0)
+        mask_u_down = torch.eq(mask_u_up, 0)
+
+        p = diff_u_up * mask_u_up + diff_u_down * mask_u_down
+        q = diff_v_up * mask_v_up + diff_v_down * mask_v_down
+        v = torch.arange(0, size_v, step = 1, device = device, requires_grad = False).reshape(size_v, 1)
+        u = torch.arange(0, size_u, step = 1, device = device, requires_grad = False).reshape(1, size_u)
+        r = frac_pivot - p * u - q * v 
+        s = torch.sqrt(torch.pow(p, 2) + torch.pow(q, 2) + torch.pow(r, 2))
+        p = p / s 
+        q = q / s 
+        r = r / s
+
+        p = p.unsqueeze(0).unsqueeze(0)
+        q = q.unsqueeze(0).unsqueeze(0)
+        r = r.unsqueeze(0).unsqueeze(0)
+        s = s.unsqueeze(0).unsqueeze(0)
+        p_list.append(p)
+        q_list.append(q)
+        r_list.append(r)
+        s_list.append(s)
+
+    p = torch.cat(p_list, dim = 0)
+    q = torch.cat(q_list, dim = 0)
+    r = torch.cat(r_list, dim = 0)
+    s = torch.cat(s_list, dim = 0)
+    parameters = torch.cat([p, q, r, s], dim = 1)
+
     return parameters
+    
+
 
 def get_depth_map(device, parameters):
     '''
@@ -223,6 +239,7 @@ def utils_test():
 
     parameters = get_parameter(device, depth_map_original, plane_seg)
 
+
     depth_map = get_depth_map(device, parameters)
     print(parameters.shape) 
     print(depth_map_original.shape, depth_map.shape)
@@ -288,4 +305,4 @@ def utils_test():
             ds /= avg_s
             print(i, the_id, count, dp, dq, dr, ds)
 
-utils_test()
+#utils_test()
