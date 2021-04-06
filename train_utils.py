@@ -22,7 +22,7 @@ def init_args():
     parser = argparse.ArgumentParser(description = 'PyTorch GeoLayout3D Training')
     parser.add_argument('--seed', default = 1453)
     parser.add_argument('--cuda',  type = int, default = 1, help = 'use GPU or not')
-    parser.add_argument('--gpu_id', type = int, default = 0, help = 'GPU device id used')
+    parser.add_argument('--gpu_id', type = int, default = 1, help = 'GPU device id used')
     parser.add_argument('--epochs', default = 200, type = int)
     parser.add_argument('--start_epoch', default = 0, type = int,
                     help = 'manual epoch number (useful on restarts)')

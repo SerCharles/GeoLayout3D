@@ -14,7 +14,7 @@ def get_parameter(device, depth_map, plane_seg):
     return: the (p, q, r, s) value of all pixels
     '''
 
-    epsilon = 0.1
+    epsilon = 1e-4
     p_list = []
     q_list = []
     r_list = []
@@ -44,8 +44,13 @@ def get_parameter(device, depth_map, plane_seg):
         mask_u = torch.eq(plane_seg[i][0][ : , 1 : ], plane_seg[i][0][ : , 0 : size_u - 1])
         mask_v_up = torch.cat((mask_v, false_dv), dim = 0)
         mask_u_up = torch.cat((mask_u, false_du), dim = 1)
-        mask_v_down = torch.eq(mask_v_up, 0)
-        mask_u_down = torch.eq(mask_u_up, 0)
+        mask_v_down = torch.cat((false_dv, mask_v), dim = 0)
+        mask_u_down = torch.cat((false_du, mask_u), dim = 1)
+        mask_v_down = mask_v_down & (~ mask_v_up)
+        mask_u_down = mask_u_down & (~ mask_u_up)
+
+        #mask_v_down = torch.eq(mask_v_up, 0)
+        #mask_u_down = torch.eq(mask_u_up, 0)
 
         p = diff_u_up * mask_u_up + diff_u_down * mask_u_down
         q = diff_v_up * mask_v_up + diff_v_down * mask_v_down
@@ -216,7 +221,6 @@ def get_plane_ids(plane_seg):
 
 #unit test code
 def utils_test():
-    start = time.time()
     transform_depth = transforms.Compose([transforms.Resize([152, 114]), transforms.ToTensor()])
     transform_original = transforms.Compose([transforms.ToTensor()])
     transform_seg = transforms.Compose([transforms.Resize([152, 114], interpolation = PIL.Image.NEAREST), transforms.ToTensor()])
