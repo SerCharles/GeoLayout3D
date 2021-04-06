@@ -60,11 +60,11 @@ def metrics_test():
     plane_ids = get_plane_ids(plane_seg) 
 
     device = torch.device('cpu')
-    parameters = get_parameter(device, depth_map_original, plane_seg, 1e-4)
-    depth_map = get_depth_map(device, parameters)
+    parameters = get_parameter(device, depth_map_original, plane_seg, 1e-8)
+    depth_map = get_depth_map(device, parameters, 1e-8)
     max_num = get_plane_max_num(plane_seg)
     plane_info = get_average_plane_info(device, parameters, plane_seg, max_num)
-    depth_average = get_average_depth_map(device, plane_seg, plane_info)
+    depth_average = get_average_depth_map(device, plane_seg, plane_info, 1e-8)
 
     rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(depth_average, depth_map)
     print(rms, rel, rlog10, rate_1, rate_2, rate_3)

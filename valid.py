@@ -37,13 +37,13 @@ def valid(args, device, valid_loader, model, epoch):
             max_num = get_plane_max_num(layout_seg)
             average_plane_info = get_average_plane_info(device, parameter, layout_seg, max_num)
             parameter_gt = get_parameter(device, layout_depth, layout_seg, args.epsilon)
-            average_depth = get_average_depth_map(device, layout_seg, average_plane_info)
+            average_depth = get_average_depth_map(device, layout_seg, average_plane_info, args.epsilon)
 
             loss = parameter_loss(parameter, parameter_gt) + \
                 discrimitive_loss(parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d) * args.alpha + \
-                depth_loss(average_depth, layout_depth) * args.beta
+                depth_loss(average_depth, layout_depth, args.epsilon) * args.beta
         
-            depth_mine = get_depth_map(device, parameter)
+            depth_mine = get_depth_map(device, parameter, args.epsilon)
             rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(depth_mine, layout_depth)
         end = time.time()
         the_time = end - start

@@ -13,8 +13,7 @@ def parameter_loss(parameter, parameter_gt):
     parameter: the parameter driven by our model, the ground truth parameter
     return: parameter loss
     '''
-    loss = torch.sum(torch.abs(parameter - parameter_gt))
-    loss /= (len(parameter) * len(parameter[0][0]) * len(parameter[0][0][0]))
+    loss = torch.sum(torch.abs(parameter - parameter_gt)) / ((len(parameter) * len(parameter[0][0]) * len(parameter[0][0][0])))
     return loss
 
 def discrimitive_loss(parameters, plane_seg_gt, average_plane_info, delta_v, delta_d):
@@ -72,16 +71,15 @@ def discrimitive_loss(parameters, plane_seg_gt, average_plane_info, delta_v, del
     return total_loss
   
 
-def depth_loss(depth, depth_gt):
+def depth_loss(depth, depth_gt, epsilon):
     '''
     description: get the depth loss 
     parameter: the depth calculated by the average plane info, ground truth
     return: depth loss
     '''
-    depth_frac = torch.pow(depth, -1)
-    depth_gt_frac = torch.pow(depth_gt, -1)
-    loss = torch.sum(torch.abs(depth_frac - depth_gt_frac))
-    loss /= (len(depth) * len(depth[0][0]) * len(depth[0][0][0]))
+    depth_frac = torch.pow(depth + epsilon, -1)
+    depth_gt_frac = torch.pow(depth_gt + epsilon, -1)
+    loss = torch.sum(torch.abs(depth_frac - depth_gt_frac)) / ((len(depth) * len(depth[0][0]) * len(depth[0][0][0])))
     return loss
 
 
@@ -110,16 +108,16 @@ def loss_test():
 
 
     device = torch.device("cpu")
-    parameters = get_parameter(device, depth_map_original, plane_seg, 1e-4)
-    depth_map = get_depth_map(device, parameters)
+    parameters = get_parameter(device, depth_map_original, plane_seg, 1e-8)
+    depth_map = get_depth_map(device, parameters, 1e-8)
     max_num = get_plane_max_num(plane_seg)
     plane_info = get_average_plane_info(device, parameters, plane_seg, max_num)
-    depth_average = get_average_depth_map(device, plane_seg, plane_info)
+    depth_average = get_average_depth_map(device, plane_seg, plane_info, 1e-8)
     parameters_avg = set_average_plane_info(device, plane_seg, plane_info)
 
     loss_p = parameter_loss(parameters_avg, parameters)
     loss_dis_1 = discrimitive_loss(parameters, plane_seg, plane_info, 0.1, 1.0)
     loss_dis_2 = discrimitive_loss(parameters_avg, plane_seg, plane_info, 0.1, 1.0)
-    loss_d = depth_loss(depth_average, depth_map)
+    loss_d = depth_loss(depth_average, depth_map, 1e-8)
     print(loss_p, loss_dis_1, loss_dis_2, loss_d)
 #loss_test()
