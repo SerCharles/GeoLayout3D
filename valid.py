@@ -39,19 +39,22 @@ def valid(args, device, valid_loader, model, epoch):
             parameter_gt = get_parameter(device, layout_depth, layout_seg, args.epsilon)
             average_depth = get_average_depth_map(device, layout_seg, average_plane_info, args.epsilon)
 
-            loss = parameter_loss(parameter, parameter_gt) + \
-                discrimitive_loss(parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d) * args.alpha + \
-                depth_loss(average_depth, layout_depth, args.epsilon) * args.beta
+            loss_p = parameter_loss(parameter, parameter_gt)
+            loss_dis = discrimitive_loss(parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d) * args.alpha
+            loss_d = depth_loss(average_depth, layout_depth, args.epsilon) * args.beta
+            loss = loss_p + loss_dis + loss_d
         
             depth_mine = get_depth_map(device, parameter, args.epsilon)
             rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(depth_mine, layout_depth)
         end = time.time()
         the_time = end - start
 
-        result_string = ('Valid: Epoch: [{} / {}], Batch: [{} / {}], Time: {:.3f}s, Loss: {:.4f}\n' \
-            + 'rms: {:.3f}, rel: {:.3f}, log10: {:.3f}, delta1: {:.3f}, delta2: {:.3f}, delta3: {:.3f}') \
-            .format(epoch + 1, args.epochs, i + 1, len(valid_loader), the_time, loss.item(), \
-                rms, rel, rlog10, rate_1, rate_2, rate_3)
+        result_string = 'Valid: Epoch: [{} / {}], Batch: [{} / {}], Time: {:.3f}s, \n' \
+        .format(epoch + 1, args.epochs, i + 1, len(valid_loader), the_time) + \
+        'Loss: {:.4f}, Loss Parameter {:.4f}, Loss Discrimitive {:.4f}, Loss Depth {:.4f}, \n' \
+            .format(loss.item(), loss_p.item(), loss_dis.item(), loss_d.item()) + \
+            'rms: {:.3f}, rel: {:.3f}, log10: {:.3f}, delta1: {:.3f}, delta2: {:.3f}, delta3: {:.3f}' \
+            .format(rms, rel, rlog10, rate_1, rate_2, rate_3)
         write_log(args, epoch, i, 'validation', result_string)
         print(result_string)
     save_checkpoint(args, model.state_dict(), epoch)

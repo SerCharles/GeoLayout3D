@@ -77,7 +77,17 @@ def depth_loss(depth, depth_gt, epsilon):
     parameter: the depth calculated by the average plane info, ground truth
     return: depth loss
     '''
-    depth_frac = torch.pow(depth + epsilon, -1)
+    small_enough = 1e-4
+    small_mask = torch.abs(depth) < small_enough
+    not_small_mask = ~small_mask
+    depth_not_small = depth * not_small_mask + small_mask #0的点值变成1，其余不变
+    depth_frac_not_small = torch.pow(depth_not_small, -1) * not_small_mask #0的点变成0， 其余正常取倒数
+
+    depth_small = depth * small_mask 
+    depth_frac_small = depth_small * (-1 / small_enough / small_enough)
+    #depth_frac_small = small_mask * small_enough
+    depth_frac = depth_frac_not_small + depth_frac_small
+
     depth_gt_frac = torch.pow(depth_gt + epsilon, -1)
     loss = torch.sum(torch.abs(depth_frac - depth_gt_frac)) / ((len(depth) * len(depth[0][0]) * len(depth[0][0][0])))
     return loss
