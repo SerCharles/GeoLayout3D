@@ -5,7 +5,8 @@ from PIL import Image
 import PIL
 import torch
 from torchvision import transforms
-from get_parameter_geolayout import *
+from scipy.optimize import linear_sum_assignment
+from utils.get_parameter_geolayout import *
 
 def log10(x):
     return torch.log(x) / log(10)
@@ -35,8 +36,37 @@ def depth_metrics(depth_map, depth_map_gt):
     return rms, rel, rlog10, rate_1, rate_2, rate_3
 
 
+def seg_metrics(unique_seg_ids, segs, segs_gt):
+    ''' 
+    description: get the segmentation accuracy
+    parameter: the unique seg ids of all batch datas, our seg results, the gt seg
+    return: mean accuracy of the batch
+    '''
+    batch_size = len(unique_seg_ids)
+    total_pixel_num = batch_size * len(segs[0][0]) * len(segs[0][0][0])
 
+    total_same_num = 0
+    for batch in range(batch_size):
+        my_id = unique_seg_ids[batch]
+        my_seg = segs[batch][0]
+        seg_gt = segs_gt[batch][0]
+        id_gt = np.unique(seg_gt)
 
+        cost_matrix = np.zeros((len(my_id), len(id_gt)))
+        for i in range(len(my_id)):
+            for j in range(len(id_gt)):
+                ii = my_id[i]
+                jj = id_gt[j]
+                mask_my = np.equal(my_seg, ii)
+                mask_gt = np.equal(seg_gt, jj)
+                mask_same = mask_my & mask_gt
+                same_num = np.sum(mask_same)
+                cost_matrix[i][j] = same_num
+        row_ind, col_ind = linear_sum_assignment(cost_matrix, maximize = True)
+        same_num = cost_matrix[row_ind, col_ind].sum()
+        total_same_num += same_num
+    accuracy = total_same_num / total_pixel_num
+    return accuracy
 
 
 #unit test code

@@ -6,8 +6,8 @@ from torchvision import transforms
 import pandas as pd
 import PIL
 from PIL import Image
-from get_parameter_geolayout import *
-from evaluation_metrics import *
+from utils.get_parameter_geolayout import *
+from utils.evaluation_metrics import *
 
 
 def mean_shift_clustering(the_parameter_image):
@@ -158,8 +158,7 @@ def post_process(batch_result, threshold_ratio):
         final_labels = post_process_one(parameter, shape, threshold_ratio)
         unique_labels, plane_info, final_depth = get_info(parameter, final_labels, shape)
 
-        unique_labels = np.expand_dims(unique_labels, axis = 0)
-        plane_info = np.expand_dims(plane_info, axis = 0)
+
         final_depth = np.expand_dims(final_depth, axis = 0)
         final_labels = final_labels.reshape(1, 1, shape[0], shape[1])
 
@@ -167,8 +166,7 @@ def post_process(batch_result, threshold_ratio):
         plane_info_list.append(plane_info)
         final_depth_list.append(final_depth)
         final_label_list.append(final_labels)
-    #unique_labels = np.concatenate(unique_label_list, axis = 0)
-    #plane_info = np.concatenate(plane_info_list, axis = 0)
+
     final_depth = np.concatenate(final_depth_list, axis = 0)
     final_labels = np.concatenate(final_label_list, axis = 0)
     return final_labels, unique_label_list, plane_info_list, final_depth
@@ -204,7 +202,11 @@ def post_test():
     rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(final_depth, depth_map_original)
     print(rms, rel, rlog10, rate_1, rate_2, rate_3)
 
-post_test()
+    plane_seg = plane_seg.detach().numpy()
+    accuracy = seg_metrics(unique_labels, final_labels, plane_seg)
+    print(accuracy)
+
+#post_test()
 
 
 
