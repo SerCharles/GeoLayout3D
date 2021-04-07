@@ -5,7 +5,7 @@ from PIL import Image
 import PIL
 import torch
 from torchvision import transforms
-from utils.get_parameter_geolayout import *
+from get_parameter_geolayout import *
 
 def log10(x):
     return torch.log(x) / log(10)

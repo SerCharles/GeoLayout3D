@@ -7,6 +7,7 @@ import pandas as pd
 import PIL
 from PIL import Image
 from get_parameter_geolayout import *
+from evaluation_metrics import *
 
 
 def mean_shift_clustering(the_parameter_image):
@@ -77,7 +78,7 @@ def get_labels_per_pixel(width, the_labels, useful_cluster_list, useful_average_
     np_cluster = np.array(useful_cluster_list, dtype = int)
     new_labels = np_cluster[min_index]
     inconsistent_count = np.sum(new_labels != the_labels)
-    print(inconsistent_count)
+    #print(inconsistent_count)
     return new_labels, inconsistent_count
 
 
@@ -98,22 +99,81 @@ def post_process_one(parameter_info, picture_shape, threshold_ratio):
         if inconsistent_count == 0:
             break 
     return labels
-    
+
+def get_info(parameters, final_labels, picture_shape):
+    ''' 
+    description: get the final plane info and depth info of one picture, the shape of one picture
+    parameter: the parameter of the picture, the final label of the picture pixels
+    return: unique labels, plane infos, final depth info
+    '''
+    width = picture_shape[1]
+    unique_labels = np.unique(final_labels)
+    index = np.arange(len(final_labels), dtype = int)
+    v = index // width 
+    u = index % width 
+    final_depth_list = []
+    plane_info_list = []
+    for label in unique_labels:
+        mask_equal = np.equal(final_labels, label)
+        parameter_current = parameters * mask_equal
+        count_current = np.sum(mask_equal)
+        sum_current = np.sum(parameter_current, axis = 1)
+        avg_current = sum_current / count_current
+        plane_info_list.append(avg_current)
+        p = avg_current[0]
+        q = avg_current[1]
+        r = avg_current[2]
+        s = avg_current[3]
+
+        depth_frac = (p * u + q * v + r) * s
+        depth_zero_mask = np.equal(depth_frac, 0)
+        depth_frac = depth_frac + depth_zero_mask
+        depth = 1 / depth_frac
+        current_depth = (depth * mask_equal).reshape(1, -1)
+
+        final_depth_list.append(current_depth)
+    final_depth = np.concatenate(final_depth_list, axis = 0)
+    final_depth = np.sum(final_depth, axis = 0)
+    final_depth = final_depth.reshape(1, picture_shape[0], picture_shape[1])
+    return unique_labels, np.array(plane_info_list), final_depth
+
+
 def post_process(batch_result, threshold_ratio):
     '''
     description: post process one batch result
     parameter: the batch result, threshold ratio of useful cluster(min pixel count / total pixel count)
-    return: the label, depth info of the picture, the planes
+    return: the final labels, the unique labels, depth info of the picture, the planes
     '''
     batch_result = batch_result.detach()
     batch_size = len(batch_result)
+    unique_label_list = []
+    final_label_list = []
+    plane_info_list = []
+    final_depth_list = []
     for i in range(batch_size):
         parameter = batch_result[i].numpy()
         shape = parameter[0].shape 
         parameter = parameter.reshape(4, -1)
         #parameter = parameter.T
         final_labels = post_process_one(parameter, shape, threshold_ratio)
-        
+        unique_labels, plane_info, final_depth = get_info(parameter, final_labels, shape)
+
+        unique_labels = np.expand_dims(unique_labels, axis = 0)
+        plane_info = np.expand_dims(plane_info, axis = 0)
+        final_depth = np.expand_dims(final_depth, axis = 0)
+        final_labels = final_labels.reshape(1, 1, shape[0], shape[1])
+
+        unique_label_list.append(unique_labels)
+        plane_info_list.append(plane_info)
+        final_depth_list.append(final_depth)
+        final_label_list.append(final_labels)
+    #unique_labels = np.concatenate(unique_label_list, axis = 0)
+    #plane_info = np.concatenate(plane_info_list, axis = 0)
+    final_depth = np.concatenate(final_depth_list, axis = 0)
+    final_labels = np.concatenate(final_label_list, axis = 0)
+    return final_labels, unique_label_list, plane_info_list, final_depth
+
+
 
 
 def post_test():
@@ -138,14 +198,12 @@ def post_test():
 
     device = torch.device("cpu")
     parameters = get_parameter(device, depth_map_original, plane_seg, 1e-8)
-    post_process(parameters, 0.01)
-    '''
-    depth_map = get_depth_map(device, parameters, 1e-8)
-    max_num = get_plane_max_num(plane_seg)
-    plane_info = get_average_plane_info(device, parameters, plane_seg, max_num)
-    depth_average = get_average_depth_map(device, plane_seg, plane_info, 1e-8)
-    parameters_avg = set_average_plane_info(device, plane_seg, plane_info)
-    '''
+    final_labels, unique_labels, plane_info, final_depth = post_process(parameters, 0.01)
+    final_depth = torch.from_numpy(final_depth)
+    final_depth = final_depth.to(device) 
+    rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(final_depth, depth_map_original)
+    print(rms, rel, rlog10, rate_1, rate_2, rate_3)
+
 post_test()
 
 
