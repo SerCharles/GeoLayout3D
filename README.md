@@ -4,7 +4,20 @@ The repo is the 3D part implementation of [GeoLayout(ECCV 2020)](https://arxiv.o
 
 ### References
 
-[1] Angel Chang, Angela Dai, Thomas Funkhouser, Maciej Halber, Matthias Niessner, Manolis Savva, Shuran Song, Andy Zeng, and Yinda Zhang. Matterport3d: Learning from rgb-d data in indoor environments. International Conference on 3D Vision (3DV), 2017.
+[1] Weidong Zhang, Wei Zhang, and Yinda Zhang. Geolayout: Geometry driven room layout estimation based on depth maps of planes, 2020
+
+You should cite in bibtex as
+
+```bibtex
+@misc{zhang2020geolayout,
+      title={GeoLayout: Geometry Driven Room Layout Estimation Based on Depth Maps of Planes}, 
+      author={Weidong Zhang and Wei Zhang and Yinda Zhang},
+      year={2020},
+      eprint={2008.06286},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+```
 
 
 
