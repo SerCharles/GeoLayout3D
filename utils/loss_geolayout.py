@@ -74,6 +74,7 @@ def discrimitive_loss(parameters, plane_seg_gt, average_plane_info, delta_v, del
         current_dvar = torch.cat(current_dvar) 
         
         dvar_raw = current_dvar.sum() * 2
+        #dvar_raw = current_dvar.sum()
         #防止/1
         divided = C * (C - 1)
         divided_mask = torch.eq(divided, 0)

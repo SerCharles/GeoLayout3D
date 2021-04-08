@@ -36,6 +36,7 @@ def init_args():
     parser.add_argument('--delta_d', default = 1.0, type = float)
     parser.add_argument('--alpha', default = 0.5, type = float)
     parser.add_argument('--beta', default = 1.0, type = float)
+    parser.add_argument('--cluster_threshold',  default = 0.01, type = float)
     parser.add_argument('--data_dir', default = '/home/shenguanlin/geolayout', type = str)
     parser.add_argument('--save_dir', default = '/home/shenguanlin/geolayout_result', type = str)
     parser.add_argument('--cur_name', default = 'test', type = str)
@@ -129,6 +130,45 @@ def init_model(args):
     print('Data got!')
 
     return device, dataloader_training, dataloader_validation, model, optimizer, args.start_epoch
+
+def init_valid_model(args):
+    '''
+    description: init the device, dataloader, model, optimizer of the model, after training
+    parameter: args
+    return: device, dataloader_validation, model
+    '''
+    print(args)
+    print('getting device...', end='')
+    torch.manual_seed(args.seed)
+    if args.cuda == 1:
+        torch.cuda.set_device(args.gpu_id)
+        device = torch.device(args.gpu_id)
+        torch.cuda.empty_cache()
+    else:
+        device = torch.device("cpu")
+    torch.backends.cudnn.enabled = True
+    torch.backends.cudnn.benchmark = True
+    print(device)
+
+    print('Initialize model')
+    
+    original_model = senet.senet154(pretrained = 'imagenet')
+    Encoder = modules.E_senet(original_model)
+    model = net.model(Encoder, num_features = 2048, block_channel = [256, 512, 1024, 2048])
+
+    file_dir = os.path.join(args.save_dir, args.cur_name)
+    filename = os.path.join(file_dir, 'checkpoint_' + str(args.epochs) + '.pth')
+    model.load_state_dict(torch.load(filename))
+    if device:
+        model.to(device)
+
+    print('Getting dataset')
+    dataset_validation = MatterPortDataSet(args.data_dir, 'validation')
+    dataloader_validation = DataLoader(dataset_validation, batch_size = args.batch_size, shuffle = False, num_workers = 5)
+    print('Data got!')
+
+    return device, dataset_validation, dataloader_validation, model
+
 
 def save_plane_results(args, base_names, final_depths, final_labels, plane_infos):
     ''' 
