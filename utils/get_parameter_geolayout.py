@@ -130,9 +130,7 @@ def get_average_plane_info(device, parameters, plane_seg, max_num):
             new_count = the_count + torch.eq(the_count, 0) #trick，如果count=0，mask=1，加上变成1(但是total=0，结果还是0)
             new_count = new_count.detach()
 
-            if(int(new_count) == 0):
-                print('count of average plane info = 0, error!')
-                exit()
+
             
             average_paramaters[batch].append((the_total / new_count).unsqueeze(0))
         average_paramaters[batch] = torch.cat(average_paramaters[batch], dim = 0).unsqueeze(0)

@@ -20,7 +20,6 @@ from valid import *
 def main():
     args = init_args()
     device, dataset_training, dataset_validation, model, optimizer, start_epoch = init_model(args)
-    #valid(args, device, dataset_validation, model, 0)
     for i in range(start_epoch, args.epochs):
         model = train(args, device, dataset_training, model, optimizer, i)
         valid(args, device, dataset_validation, model, i)
