@@ -104,6 +104,7 @@ def get_plane_max_num(plane_seg):
     return: the max num of planes
     '''
     max_num = torch.max(plane_seg)
+    max_num = max_num.detach()
     return max_num
 
 def get_average_plane_info(device, parameters, plane_seg, max_num):
@@ -122,10 +123,18 @@ def get_average_plane_info(device, parameters, plane_seg, max_num):
         average_paramaters.append([])
         for i in range(max_num + 1):
             the_mask = torch.eq(plane_seg[batch], i) #选择所有seg和i相等的像素
+            the_mask = the_mask.detach()
+
             the_total = torch.sum(the_parameter * the_mask, dim = [1, 2]) #对每个图符合条件的求和
             the_count = torch.sum(the_mask) #求和
-            the_count = the_count + torch.eq(the_count, 0) #trick，如果count=0，mask=1，加上变成1(但是total=0，结果还是0)
-            average_paramaters[batch].append((the_total / the_count).unsqueeze(0))
+            new_count = the_count + torch.eq(the_count, 0) #trick，如果count=0，mask=1，加上变成1(但是total=0，结果还是0)
+            new_count = new_count.detach()
+
+            if(int(new_count) == 0):
+                print('count of average plane info = 0, error!')
+                exit()
+            
+            average_paramaters[batch].append((the_total / new_count).unsqueeze(0))
         average_paramaters[batch] = torch.cat(average_paramaters[batch], dim = 0).unsqueeze(0)
     average_paramaters = torch.cat(average_paramaters)
     return average_paramaters
@@ -154,11 +163,13 @@ def get_average_depth_map(device, plane_seg, average_plane_info, epsilon):
 
             mask = torch.eq(plane_seg[i][0], the_id)
             reverse_mask = torch.ne(plane_seg[i][0], the_id)
-            raw_result = (u * p + v * q + r) * s 
+            mask = mask.detach()
+            reverse_mask = reverse_mask.detach()
 
-            raw_result = raw_result + reverse_mask #trick, 防止/0
-            raw_result = torch.pow(raw_result + epsilon, -1)
-            depth_map[i].append((mask * raw_result).unsqueeze(0))
+            raw_result = (u * p + v * q + r) * s 
+            masked_result = raw_result + reverse_mask #trick, 防止/0
+            fraced_result = torch.pow(masked_result + epsilon, -1)
+            depth_map[i].append((mask * fraced_result).unsqueeze(0))
 
 
         depth_map[i] = torch.cat(depth_map[i])
@@ -181,6 +192,7 @@ def set_average_plane_info(device, plane_seg, average_plane_info):
         for the_id in range(len(average_plane_info[i])):
             the_id = int(the_id) 
             mask = torch.eq(plane_seg[i][0], the_id)
+            mask = mask.detach()
             p = average_plane_info[i][the_id][0]
             q = average_plane_info[i][the_id][1]
             r = average_plane_info[i][the_id][2]

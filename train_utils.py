@@ -11,6 +11,8 @@ from data.load_matterport import *
 import models.senet as senet 
 import models.modules as modules 
 import models.net as net
+import PIL 
+from PIL import Image
 
 
 def init_args():
@@ -61,7 +63,7 @@ def save_checkpoint(args, state, epoch):
     file_dir = os.path.join(args.save_dir, args.cur_name)
     if not os.path.exists(file_dir):
         os.mkdir(file_dir)
-    if epoch % 10 == 0:
+    if epoch % 5 == 0:
         filename = os.path.join(file_dir, 'checkpoint_' + str(epoch) + '.pth')
         torch.save(state, filename)
 
@@ -103,9 +105,14 @@ def init_model(args):
 
     print('Initialize model')
     
-    original_model = senet.senet154(pretrained='imagenet')
+    original_model = senet.senet154(pretrained = 'imagenet')
     Encoder = modules.E_senet(original_model)
     model = net.model(Encoder, num_features = 2048, block_channel = [256, 512, 1024, 2048])
+
+    if(args.start_epoch != 0):
+        file_dir = os.path.join(args.save_dir, args.cur_name)
+        filename = os.path.join(file_dir, 'checkpoint_' + str(args.start_epoch) + '.pth')
+        model.load_state_dict(torch.load(filename))
 
     if device:
         model.to(device)
@@ -118,7 +125,45 @@ def init_model(args):
     dataset_training = MatterPortDataSet(args.data_dir, 'training')
     dataset_validation = MatterPortDataSet(args.data_dir, 'validation')
     dataloader_training =  DataLoader(dataset_training, batch_size = args.batch_size, shuffle = True, num_workers = 5)
-    dataloader_validation = DataLoader(dataset_validation, batch_size = args.batch_size, shuffle = True, num_workers = 5)
+    dataloader_validation = DataLoader(dataset_validation, batch_size = args.batch_size, shuffle = False, num_workers = 5)
     print('Data got!')
 
-    return device, dataloader_training, dataloader_validation, model, optimizer
+    return device, dataloader_training, dataloader_validation, model, optimizer, args.start_epoch
+
+def save_plane_results(args, base_names, final_depths, final_labels, plane_infos):
+    ''' 
+    description: save the plane results
+    parameter: args, the file base names of the batch, the final depth, final segmentation and final plane infos
+    return: empty
+    '''
+    depth_dir = os.path.join(args.save_dir, args.cur_name, 'depth')
+    seg_dir = os.path.join(args.save_dir, args.cur_name, 'seg')
+    plane_dir = os.path.join(args.save_dir, args.cur_name, 'plane')
+    if not os.path.exists(depth_dir): 
+        os.mkdir(depth_dir)
+    if not os.path.exists(seg_dir): 
+        os.mkdir(seg_dir)
+    if not os.path.exists(plane_dir): 
+        os.mkdir(plane_dir)
+
+    batch_size = len(base_names)
+    for i in range(batch_size):
+        base_name = base_names[i]
+        depth = final_depths[i]
+        seg = final_labels[i]
+        plane_info = np.array(plane_infos[i])
+        depth = depth * 4000
+        depth = depth.astype(int)
+
+        depth_image = Image.fromarray(depth).convert('I')
+        seg_image = Image.fromarray(seg).convert('I')
+
+        depth_name = os.path.join(depth_dir, base_name, '_depth.png')
+        seg_name = os.path.join(depth_dir, base_name, '_plane.png')
+        plane_name = os.path.join(depth_dir, base_name, '_plane.npy')
+
+        depth_image.save(depth_name)
+        seg_image.save(seg_name)
+        np.save(plane_name, plane_info)
+    
+

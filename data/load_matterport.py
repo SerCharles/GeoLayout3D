@@ -207,7 +207,22 @@ class MatterPortDataSet(Dataset):
             layout_seg = self.transform_depth(layout_seg)
             intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
             return image, layout_depth, layout_seg, intrinsic
- 
+
+    def get_valid_filenames(self):
+        '''
+        description: get the file names of all valid data
+        parameter: empty
+        return: the filenames
+        '''
+        if not self.type == 'validation':
+            return []
+        result = []
+        for i in range(self.length):
+            base_name = self.depth_filenames[i][:-4]
+            result.push_back(base_name)
+        return result
+
+
     def __len__(self):
         '''
         description: get the length of the dataset
@@ -231,6 +246,7 @@ def data_test():
     print('layout_depth:', layout_depth, layout_depth.size())
     print('layout_seg:', layout_seg, layout_seg.size())
     print('intrinsic:', intrinsic, intrinsic.shape)
+    #print(a.intrinsics[1])
     #print('norm:', norm, norm.size())
 
     
