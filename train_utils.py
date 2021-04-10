@@ -32,7 +32,7 @@ def init_args():
     parser.add_argument('--learning_rate', '--lr', default = 1e-4, type = float)
     parser.add_argument('--weight_decay', '--wd',  default = 1e-4, type = float)
     parser.add_argument('--epsilon', default = 1e-8, type = float)
-    parser.add_argument('--batch_size', '--bs', default = 4, type = int)
+    parser.add_argument('--batch_size', '--bs', default = 32, type = int)
     parser.add_argument('--delta_v', default = 0.1, type = float)
     parser.add_argument('--delta_d', default = 1.0, type = float)
     parser.add_argument('--alpha', default = 0.5, type = float)
@@ -40,7 +40,7 @@ def init_args():
     parser.add_argument('--cluster_threshold',  default = 0.01, type = float)
     parser.add_argument('--data_dir', default = '/home/shenguanlin/geolayout', type = str)
     parser.add_argument('--save_dir', default = '/home/shenguanlin/geolayout_result', type = str)
-    parser.add_argument('--cur_name', default = 'test', type = str)
+    parser.add_argument('--cur_name', default = 'final', type = str)
 
     args = parser.parse_args()
     return args
