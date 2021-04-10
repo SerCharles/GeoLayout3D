@@ -12,6 +12,7 @@ import models.senet as senet
 import models.modules as modules 
 import models.net as net
 import PIL 
+import cv2
 from PIL import Image
 
 
@@ -64,7 +65,7 @@ def save_checkpoint(args, state, epoch):
     file_dir = os.path.join(args.save_dir, args.cur_name)
     if not os.path.exists(file_dir):
         os.mkdir(file_dir)
-    if epoch % 5 == 0:
+    if epoch % 50 == 0:
         filename = os.path.join(file_dir, 'checkpoint_' + str(epoch) + '.pth')
         torch.save(state, filename)
 
@@ -186,23 +187,37 @@ def save_plane_results(args, base_names, final_depths, final_labels, plane_infos
     if not os.path.exists(plane_dir): 
         os.mkdir(plane_dir)
 
+
+
     batch_size = len(base_names)
     for i in range(batch_size):
         base_name = base_names[i]
         depth = final_depths[i]
         seg = final_labels[i]
+        seg_r = seg // 9
+        seg_g = (seg - seg_r * 9) // 3
+        seg_b = seg % 3
+        seg_colors_r = (seg_r * 127).reshape((seg.shape[1], seg.shape[2]))
+        seg_colors_b = (seg_g * 127).reshape((seg.shape[1], seg.shape[2]))
+        seg_colors_g = (seg_b * 127).reshape((seg.shape[1], seg.shape[2]))
+        seg_colors = np.stack((seg_colors_r, seg_colors_g, seg_colors_b), axis = 2)
+        print(seg_colors.shape)
+
         plane_info = np.array(plane_infos[i])
         depth = depth * 4000
         depth = depth.astype(int)
+        depth = depth.reshape((depth.shape[1], depth.shape[2]))
 
-        depth_image = Image.fromarray(depth).convert('I')
-        seg_image = Image.fromarray(seg).convert('I')
 
-        depth_name = os.path.join(depth_dir, base_name, '_depth.png')
-        seg_name = os.path.join(depth_dir, base_name, '_plane.png')
-        plane_name = os.path.join(depth_dir, base_name, '_plane.npy')
+        #depth_image = Image.fromarray(depth).convert('I')
+        seg_image = Image.fromarray(np.uint8(seg_colors)).convert('RGB')
 
-        depth_image.save(depth_name)
+        depth_name = os.path.join(depth_dir, base_name + '_depth.png')
+        seg_name = os.path.join(seg_dir, base_name + '_plane.png')
+        plane_name = os.path.join(plane_dir, base_name + '_plane.npy')
+
+        cv2.imwrite(depth_name, depth)
+        #depth_image.save(depth_name)
         seg_image.save(seg_name)
         np.save(plane_name, plane_info)
     
