@@ -219,7 +219,7 @@ class MatterPortDataSet(Dataset):
         result = []
         for i in range(self.length):
             base_name = self.depth_filenames[i][:-4]
-            result.push_back(base_name)
+            result.append(base_name)
         return result
 
 

@@ -17,7 +17,6 @@ def depth_metrics(depth_map, depth_map_gt):
     parameter: depth map of mine and the ground truth
     return: several metrics, rms, rel, log10, 1.25, 1.25^2, 1.25^3
     '''
-    
     abs_diff = (depth_map - depth_map_gt).abs()
 
     mse = float((torch.pow(abs_diff, 2)).mean())

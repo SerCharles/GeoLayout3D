@@ -181,8 +181,8 @@ def post_process(batch_result, intrinsics, threshold_ratio):
     parameter: the batch result, intrinsics, threshold ratio of useful cluster(min pixel count / total pixel count)
     return: the final labels, the unique labels, the parameters of the planes, depth info of the picture
     '''
-    batch_result = batch_result.detach()
-    intrinsics = intrinsics.detach().numpy()
+    batch_result = batch_result.cpu()
+    intrinsics = intrinsics.cpu().numpy()
     batch_size = len(batch_result)
     unique_label_list = []
     final_label_list = []
