@@ -1,3 +1,7 @@
+''' 
+Used in getting the depth metrics and the segmentation accuracy
+'''
+
 import numpy as np
 import os
 from math import *
@@ -6,7 +10,7 @@ import PIL
 import torch
 from torchvision import transforms
 from scipy.optimize import linear_sum_assignment
-from utils.get_parameter_geolayout import *
+from utils.utils import *
 
 def log10(x):
     return torch.log(x) / log(10)

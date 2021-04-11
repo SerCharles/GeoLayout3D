@@ -1,3 +1,8 @@
+''' 
+functions used in the conversion between depth and (p, q, r, s) parameters, and getting average depth/parameters
+'''
+
+
 import numpy as np
 import os
 from math import *

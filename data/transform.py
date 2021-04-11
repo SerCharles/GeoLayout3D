@@ -1,3 +1,8 @@
+''' 
+The transforms used in conducting data augmentation of the Matterport3D-Layout,
+in order to make the cropping of images, depth maps and segmentations consistent
+'''
+
 import torch
 import numpy as np
 import PIL

@@ -1,3 +1,7 @@
+''' 
+The implementation of parameter loss, discrimitive loss and depth loss
+'''
+
 import numpy as np
 import os
 from math import *
@@ -5,7 +9,7 @@ from PIL import Image
 import PIL
 import torch
 from torchvision import transforms
-from utils.get_parameter_geolayout import *
+from utils.utils import *
 
 def parameter_loss(parameter, parameter_gt):
     '''

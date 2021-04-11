@@ -1,3 +1,8 @@
+''' 
+Utils used in training and validing the network
+'''
+
+
 import argparse
 import time
 import torch
@@ -7,13 +12,14 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 from torch.utils.data import DataLoader
 import os
-from data.load_matterport import *
-import models.senet as senet 
-import models.modules as modules 
-import models.net as net
 import PIL 
 import cv2
 from PIL import Image
+
+from data.dataset import *
+import models.senet as senet 
+import models.modules as modules 
+import models.net as net
 
 
 def init_args():
@@ -114,7 +120,7 @@ def init_model(args):
     if(args.start_epoch != 0):
         file_dir = os.path.join(args.save_dir, args.cur_name)
         filename = os.path.join(file_dir, 'checkpoint_' + str(args.start_epoch) + '.pth')
-        model.load_state_dict(torch.load(filename))
+        model.load_state_dict(torch.load(filename, map_location = device))
 
     if device:
         model.to(device)
@@ -159,7 +165,7 @@ def init_valid_model(args):
 
     file_dir = os.path.join(args.save_dir, args.cur_name)
     filename = os.path.join(file_dir, 'checkpoint_' + str(args.epochs) + '.pth')
-    model.load_state_dict(torch.load(filename))
+    model.load_state_dict(torch.load(filename, map_location = device))
     if device:
         model.to(device)
 
@@ -201,7 +207,7 @@ def save_plane_results(args, base_names, final_depths, final_labels, plane_infos
         seg_colors_b = (seg_g * 127).reshape((seg.shape[1], seg.shape[2]))
         seg_colors_g = (seg_b * 127).reshape((seg.shape[1], seg.shape[2]))
         seg_colors = np.stack((seg_colors_r, seg_colors_g, seg_colors_b), axis = 2)
-        print(seg_colors.shape)
+        #print(seg_colors.shape)
 
         plane_info = np.array(plane_infos[i])
         depth = depth * 4000

@@ -1,3 +1,6 @@
+''' 
+The main function of training and validing the network
+'''
 import numpy as np
 import time
 import os
@@ -7,13 +10,14 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
-from data.load_matterport import *
+
+from data.dataset import *
 import models.senet as senet 
 import models.modules as modules 
 import models.net as net
-from utils.loss_geolayout import * 
-from train_utils import *
-from utils.get_parameter_geolayout import *
+from utils.loss import * 
+from global_utils import *
+from utils.utils import *
 from train import * 
 from valid import * 
 

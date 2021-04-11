@@ -1,3 +1,7 @@
+''' 
+The function of training one epoch of the network
+'''
+
 import numpy as np
 import time
 import os
@@ -7,14 +11,15 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
-from data.load_matterport import *
+from torch.nn.utils import clip_grad_norm
+
+from data.dataset import *
 import models.senet as senet 
 import models.modules as modules 
 import models.net as net
-from utils.loss_geolayout import * 
-from train_utils import *
-from utils.get_parameter_geolayout import *
-from torch.nn.utils import clip_grad_norm
+from utils.loss import * 
+from global_utils import *
+from utils.utils import *
 
 def train(args, device, train_loader, model, optimizer, epoch):
     '''

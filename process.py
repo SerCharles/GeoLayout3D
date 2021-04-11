@@ -1,3 +1,8 @@
+''' 
+After training the network, use this to conduct the clustering, iterative improvement and visualization
+'''
+
+
 import numpy as np
 from sklearn.cluster import MeanShift, estimate_bandwidth
 import torch
@@ -6,12 +11,69 @@ from torchvision import transforms
 import pandas as pd
 import PIL
 from PIL import Image
-from utils.get_parameter_geolayout import *
-from utils.evaluation_metrics import *
+from utils.utils import *
+from utils.metrics import *
 from utils.post_process import * 
-from train_utils import *
+from global_utils import *
 from utils.post_process import *
-from data.load_matterport import *
+from data.dataset import *
+
+class AverageMeter(object):
+    ''' 
+    used in calculating the average depth metrics
+    '''
+
+    def __init__(self, args):
+        self.num = 0
+        self.rms = 0.0
+        self.rel = 0.0 
+        self.rlog10 = 0.0 
+        self.rate_1 = 0.0 
+        self.rate_2 = 0.0 
+        self.rate_3 = 0.0
+        file_dir = os.path.join(args.save_dir, args.cur_name)
+        if not os.path.exists(file_dir):
+            os.mkdir(file_dir)
+        file_name = os.path.join(file_dir, 'valid_log.txt')
+        self.log_name = file_name
+        file = open(self.log_name, 'w')
+        file.close()
+    
+    def add_one(self, metrics):
+        rms, rel, rlog10, rate_1, rate_2, rate_3 = metrics 
+        self.num += 1
+        self.rms += rms
+        self.rel += rel
+        self.rlog10 += rlog10
+        self.rate_1 += rate_1
+        self.rate_2 += rate_2 
+        self.rate_3 += rate_3 
+        result_string = 'rms: {:.3f}, rel: {:.3f}, log10: {:.3f}, delta1: {:.3f}, delta2: {:.3f}, delta3: {:.3f}' \
+            .format(rms, rel, rlog10, rate_1, rate_2, rate_3)
+        print(result_string)
+        file = open(self.log_name, 'a')
+        file.write(result_string + '\n')
+        file.close()
+    
+    def show_average(self):
+        rms = self.rms / self.num
+        rel = self.rel / self.num
+        rlog10 = self.rlog10 / self.num
+        rate_1 = self.rate_1 / self.num
+        rate_2 = self.rate_2 / self.num
+        rate_3 = self.rate_3 / self.num
+        result_string = 'rms: {:.3f}, rel: {:.3f}, log10: {:.3f}, delta1: {:.3f}, delta2: {:.3f}, delta3: {:.3f}' \
+            .format(rms, rel, rlog10, rate_1, rate_2, rate_3)
+        print(result_string)
+        file = open(self.log_name, 'a')
+        file.write(result_string + '\n')
+        file.close()
+
+    def print_info(self, print_string):
+        print(print_string)
+        file = open(self.log_name, 'a')
+        file.write(print_string + '\n')
+        file.close()
 
 def process():
     args = init_args()
@@ -20,12 +82,9 @@ def process():
     all_base_names = dataset_validation.get_valid_filenames()
     current_flag = 0
 
-    rms_total = 0.0
-    rel_total = 0.0 
-    rlog10_total = 0.0 
-    rate_1_total = 0.0 
-    rate_2_total = 0.0 
-    rate_3_total = 0.0
+    metrics_pixel = AverageMeter(args)
+    metrics_avg = AverageMeter(args)
+    metrics_final = AverageMeter(args)
     accuracy_total = 0.0
     for i, (image, layout_depth, layout_seg, intrinsic) in enumerate(dataloader_validation):
         batch_size = len(image)
@@ -39,41 +98,35 @@ def process():
         with torch.no_grad():
             parameter = model(image)
 
+            max_num = get_plane_max_num(layout_seg)
+            average_plane_info = get_average_plane_info(device, parameter, layout_seg, max_num)
+            parameter_gt = get_parameter(device, layout_depth, layout_seg, args.epsilon)
+            average_depth = get_average_depth_map(device, layout_seg, average_plane_info, args.epsilon)
             depth_mine = get_depth_map(device, parameter, args.epsilon)
-            layout_seg_gt = layout_seg.cpu().numpy()
-            rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(depth_mine, layout_depth)
-            print('-' * 100)
-            print('Batch [{} / {}]'.format(i + 1, len(dataloader_validation)))
-            print('rms: {:.3f}, rel: {:.3f}, log10: {:.3f}, delta1: {:.3f}, delta2: {:.3f}, delta3: {:.3f}' \
-            .format(rms, rel, rlog10, rate_1, rate_2, rate_3))
 
+
+            metrics_pixel.print_info('-' * 100 + '\nBatch [{} / {}]'.format(i + 1, len(dataloader_validation)))
+
+            metrics_pixel.add_one(depth_metrics(depth_mine, layout_depth))
+            metrics_avg.add_one(depth_metrics(average_depth, layout_depth))
+
+            layout_seg_gt = layout_seg.cpu().numpy()
             final_labels, unique_label_list, parameter_list, plane_infos, final_depths = \
                 post_process(parameter, intrinsic, args.cluster_threshold)
             save_plane_results(args, base_names, final_depths, final_labels, plane_infos)
 
             final_depths = torch.from_numpy(final_depths).to(device)
-            rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(final_depths, layout_depth)
+            metrics_final.add_one(depth_metrics(final_depths, layout_depth))
             accuracy = seg_metrics(unique_label_list, final_labels, layout_seg_gt)
 
-            rms_total += rms 
-            rel_total += rel 
-            rlog10_total += rlog10 
-            rate_1_total += rate_1
-            rate_2_total += rate_2
-            rate_3_total += rate_3 
             accuracy_total += accuracy
 
-            print('rms: {:.3f}, rel: {:.3f}, log10: {:.3f}, delta1: {:.3f}, delta2: {:.3f}, delta3: {:.3f}, accuracy: {:.4f}' \
-            .format(rms, rel, rlog10, rate_1, rate_2, rate_3, accuracy))
-    rms_avg = rms_total / len(dataloader_validation)
-    rel_avg = rel_total / len(dataloader_validation)
-    log10_avg = log10_total / len(dataloader_validation)
-    rate_1_avg = rate_1_total / len(dataloader_validation)
-    rate_2_avg = rate_2_total / len(dataloader_validation)
-    rate_3_avg = rate_3_total / len(dataloader_validation)
     accuracy_avg = accuracy_total / len(dataloader_validation)
-    print("*" * 100)
-    print('rms: {:.3f}, rel: {:.3f}, log10: {:.3f}, delta1: {:.3f}, delta2: {:.3f}, delta3: {:.3f}, accuracy: {:.4f}' \
-    .format(rms_avg, rel_avg, rlog10_avg, rate_1_avg, rate_2_avg, rate_3_avg, accuracy_avg))
+    metrics_pixel.print_info('-' * 100 + '\nAverage Info:')
+    metrics_pixel.show_average()
+    metrics_avg.show_average()
+    metrics_final.show_average()
+    print('accuracy: {:.4f}'.format(accuracy_avg))
 
-process()
+if __name__ == '__main__':
+    process()

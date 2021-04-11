@@ -1,3 +1,7 @@
+''' 
+The postprocess code. It includes mean-shift clustering and iterations to further improve the result
+'''
+
 import numpy as np
 from sklearn.cluster import MeanShift, estimate_bandwidth
 import torch
@@ -6,8 +10,8 @@ from torchvision import transforms
 import pandas as pd
 import PIL
 from PIL import Image
-from utils.get_parameter_geolayout import *
-from utils.evaluation_metrics import *
+from utils.utils import *
+from utils.metrics import *
 
 
 def mean_shift_clustering(the_parameter_image):

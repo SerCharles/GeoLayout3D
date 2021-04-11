@@ -1,3 +1,7 @@
+''' 
+The dataset used for loading and preprocessing Matterport3D-Layout dataset
+'''
+
 import h5py
 import numpy as np
 import os
@@ -8,7 +12,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import PIL
-import data.matterport_transform as matterport_transform
+import data.transform as matterport_transform
 
 
 class MatterPortDataSet(Dataset):
