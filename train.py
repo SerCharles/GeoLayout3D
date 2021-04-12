@@ -47,15 +47,14 @@ def train(args, device, train_loader, model, optimizer, epoch):
         average_plane_info = get_average_plane_info(device, parameter, layout_seg, max_num)
         parameter_gt = get_parameter(device, layout_depth, layout_seg, args.epsilon)
         parameter_gt = parameter_gt.detach()
-        average_depth = get_average_depth_map(device, layout_seg, average_plane_info, args.epsilon)
+        #average_depth = get_average_depth_map(device, layout_seg, average_plane_info, args.epsilon)
 
         
         loss_p = parameter_loss(parameter, parameter_gt)
         loss_dis = discrimitive_loss(parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d) * args.alpha
-        loss_d = depth_loss(average_depth, layout_depth, args.epsilon) * args.beta
+        loss_d = depth_loss_direct(device, layout_seg, average_plane_info, layout_depth, args.epsilon)  * args.beta
         loss = loss_p + loss_dis + loss_d
         loss.backward()
-        #torch.nn.utils.clip_grad_norm_(model.parameters(), 1 / args.epsilon, norm_type = 1)
         optimizer.step()
 
         end = time.time()

@@ -46,11 +46,13 @@ def valid(args, device, valid_loader, model, epoch):
 
             loss_p = parameter_loss(parameter, parameter_gt)
             loss_dis = discrimitive_loss(parameter, layout_seg, average_plane_info, args.delta_v, args.delta_d) * args.alpha
-            loss_d = depth_loss(average_depth, layout_depth, args.epsilon) * args.beta
+            loss_d = depth_loss_direct(device, layout_seg, average_plane_info, layout_depth, args.epsilon) * args.beta
             loss = loss_p + loss_dis + loss_d
         
             depth_mine = get_depth_map(device, parameter, args.epsilon)
             rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(depth_mine, layout_depth)
+            rms_avg, rel_avg, rlog10_avg, rate_1_avg, rate_2_avg, rate_3_avg = depth_metrics(average_depth, layout_depth)
+
         end = time.time()
         the_time = end - start
 
@@ -58,8 +60,10 @@ def valid(args, device, valid_loader, model, epoch):
         .format(epoch + 1, args.epochs, i + 1, len(valid_loader), the_time) + \
         'Loss: {:.4f}, Loss Parameter {:.4f}, Loss Discrimitive {:.4f}, Loss Depth {:.4f}, \n' \
             .format(loss.item(), loss_p.item(), loss_dis.item(), loss_d.item()) + \
-            'rms: {:.3f}, rel: {:.3f}, log10: {:.3f}, delta1: {:.3f}, delta2: {:.3f}, delta3: {:.3f}' \
-            .format(rms, rel, rlog10, rate_1, rate_2, rate_3)
+            'rms: {:.3f}, rel: {:.3f}, log10: {:.3f}, delta1: {:.3f}, delta2: {:.3f}, delta3: {:.3f}, \n' \
+            .format(rms, rel, rlog10, rate_1, rate_2, rate_3) + \
+            'rms_avg: {:.3f}, rel_avg: {:.3f}, log10_avg: {:.3f}, delta1_avg: {:.3f}, delta2_avg: {:.3f}, delta3_avg: {:.3f}' \
+            .format(rms_avg, rel_avg, rlog10_avg, rate_1_avg, rate_2_avg, rate_3_avg)
         write_log(args, epoch, i, 'validation', result_string)
         print(result_string)
     save_checkpoint(args, model.state_dict(), epoch)

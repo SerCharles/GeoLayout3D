@@ -120,6 +120,44 @@ def depth_loss(depth, depth_gt, epsilon):
 
 
 
+def depth_loss_direct(device, plane_seg, average_plane_info, depth_gt, epsilon):
+    '''
+    description: get the depth loss directly
+    parameter: the depth calculated by the average plane info, ground truth
+    return: depth loss
+    '''
+    depth_map_frac = []
+    batch_size = len(plane_seg)
+    size_v = len(plane_seg[0][0])
+    size_u = len(plane_seg[0][0][0])
+
+    for i in range(batch_size):
+        depth_map_frac.append([])
+        for the_id in range(len(average_plane_info[i])):
+            the_id = int(the_id) 
+            p = average_plane_info[i][the_id][0]
+            q = average_plane_info[i][the_id][1]
+            r = average_plane_info[i][the_id][2]
+            s = average_plane_info[i][the_id][3]
+            v = torch.arange(0, size_v, step = 1, device = device, requires_grad = False).reshape(size_v, 1)
+            u = torch.arange(0, size_u, step = 1, device = device, requires_grad = False).reshape(1, size_u)
+
+            mask = torch.eq(plane_seg[i][0], the_id)
+            mask = mask.detach()
+
+            raw_result = (u * p + v * q + r) * s 
+            result = raw_result * mask
+            depth_map_frac[i].append(result.unsqueeze(0))
+
+
+        depth_map_frac[i] = torch.cat(depth_map_frac[i])
+        depth_map_frac[i] = torch.sum(depth_map_frac[i], dim = 0, keepdim = True).unsqueeze(0)
+    depth_map_frac = torch.cat(depth_map_frac)
+
+    depth_gt_frac = torch.pow(depth_gt + epsilon, -1)
+    loss = torch.sum(torch.abs(depth_map_frac - depth_gt_frac)) / ((len(depth_gt) * len(depth_gt[0][0]) * len(depth_gt[0][0][0])))
+    return loss
+
 
 
 #unit test code
@@ -155,5 +193,6 @@ def loss_test():
     loss_dis_1 = discrimitive_loss(parameters, plane_seg, plane_info, 0.1, 1.0)
     loss_dis_2 = discrimitive_loss(parameters_avg, plane_seg, plane_info, 0.1, 1.0)
     loss_d = depth_loss(depth_average, depth_map, 1e-8)
-    print(loss_p, loss_dis_1, loss_dis_2, loss_d)
+    loss_d_mod = depth_loss_direct(device, plane_seg, plane_info, depth_map, 1e-8)
+    print(loss_p, loss_dis_1, loss_dis_2, loss_d, loss_d_mod)
 #loss_test()
