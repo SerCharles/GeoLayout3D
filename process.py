@@ -88,10 +88,11 @@ def process():
     accuracy_total = 0.0
     for i, (image, layout_depth, layout_seg, intrinsic) in enumerate(dataloader_validation):
         batch_size = len(image)
-        image = image.to(device)
-        layout_depth = layout_depth.to(device)
-        layout_seg = layout_seg.to(device)
-        intrinsic = intrinsic.to(device)
+        if device:
+            image = image.cuda()
+            layout_depth = layout_depth.cuda()
+            layout_seg = layout_seg.cuda()
+            intrinsic = intrinsic.cuda()
         base_names = all_base_names[current_flag : current_flag + batch_size]
         current_flag += batch_size
 

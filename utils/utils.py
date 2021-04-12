@@ -26,8 +26,13 @@ def get_parameter(device, depth_map, plane_seg, epsilon):
         depth_pivot = depth_map[i][0]
         size_v = len(depth_map[i][0])
         size_u = len(depth_map[i][0][0])
-        empty_dv = torch.ones((1, size_u), dtype = float, device = device, requires_grad = False) * epsilon
-        empty_du = torch.ones((size_v, 1), dtype = float, device = device, requires_grad = False) * epsilon
+        empty_dv = torch.ones((1, size_u), dtype = float, requires_grad = False) * epsilon
+        empty_du = torch.ones((size_v, 1), dtype = float, requires_grad = False) * epsilon
+        if device: 
+            empty_dv = empty_dv.cuda() 
+            empty_du = empty_du.cuda()
+
+
         depth_v_up = torch.cat((depth_pivot[1 : , : ], empty_dv), dim = 0)
         depth_v_down = torch.cat((empty_dv, depth_pivot[0 : size_v - 1, : ]), dim = 0)
         depth_u_up = torch.cat((depth_pivot[ : , 1 : ], empty_du), dim = 1)
@@ -40,8 +45,12 @@ def get_parameter(device, depth_map, plane_seg, epsilon):
         diff_u_down = frac_pivot - torch.pow(depth_u_down + epsilon, -1)
 
 
-        false_dv = torch.zeros((1, size_u), dtype = bool, device = device, requires_grad = False)
-        false_du = torch.zeros((size_v, 1), dtype = bool, device = device, requires_grad = False)
+        false_dv = torch.zeros((1, size_u), dtype = bool, requires_grad = False)
+        false_du = torch.zeros((size_v, 1), dtype = bool, requires_grad = False)
+        if device: 
+            false_dv = false_dv.cuda() 
+            false_du = false_du.cuda()
+
         mask_v = torch.eq(plane_seg[i][0][1 : , : ], plane_seg[i][0][0 : size_v - 1, :])
         mask_u = torch.eq(plane_seg[i][0][ : , 1 : ], plane_seg[i][0][ : , 0 : size_u - 1])
         mask_v_up = torch.cat((mask_v, false_dv), dim = 0)
@@ -56,8 +65,11 @@ def get_parameter(device, depth_map, plane_seg, epsilon):
 
         p = diff_u_up * mask_u_up + diff_u_down * mask_u_down
         q = diff_v_up * mask_v_up + diff_v_down * mask_v_down
-        v = torch.arange(0, size_v, step = 1, device = device, requires_grad = False).reshape(size_v, 1)
-        u = torch.arange(0, size_u, step = 1, device = device, requires_grad = False).reshape(1, size_u)
+        v = torch.arange(0, size_v, step = 1, requires_grad = False).reshape(size_v, 1)
+        u = torch.arange(0, size_u, step = 1, requires_grad = False).reshape(1, size_u)
+        if device: 
+            v = v.cuda() 
+            u = u.cuda()
         r = frac_pivot - p * u - q * v 
         s = torch.sqrt(torch.pow(p, 2) + torch.pow(q, 2) + torch.pow(r, 2))
         p = p / s 
@@ -97,8 +109,11 @@ def get_depth_map(device, parameters, epsilon):
 
     size_v = len(p[0][0])
     size_u = len(p[0][0][0])
-    v = torch.arange(0, size_v, step = 1, device = device, requires_grad = False).reshape(1, 1, size_v, 1)
-    u = torch.arange(0, size_u, step = 1, device = device, requires_grad = False).reshape(1, 1, 1, size_u)
+    v = torch.arange(0, size_v, step = 1, requires_grad = False).reshape(1, 1, size_v, 1)
+    u = torch.arange(0, size_u, step = 1, requires_grad = False).reshape(1, 1, 1, size_u)
+    if device: 
+        v = v.cuda() 
+        u = u.cuda()
     depth_map = torch.pow((p * u + q * v + r) * s + epsilon, -1)
     return depth_map
 
@@ -161,8 +176,11 @@ def get_average_depth_map(device, plane_seg, average_plane_info, epsilon):
             q = average_plane_info[i][the_id][1]
             r = average_plane_info[i][the_id][2]
             s = average_plane_info[i][the_id][3]
-            v = torch.arange(0, size_v, step = 1, device = device, requires_grad = False).reshape(size_v, 1)
-            u = torch.arange(0, size_u, step = 1, device = device, requires_grad = False).reshape(1, size_u)
+            v = torch.arange(0, size_v, step = 1, requires_grad = False).reshape(size_v, 1)
+            u = torch.arange(0, size_u, step = 1, requires_grad = False).reshape(1, size_u)
+            if device: 
+                v = v.cuda() 
+                u = u.cuda()
 
             mask = torch.eq(plane_seg[i][0], the_id)
             reverse_mask = torch.ne(plane_seg[i][0], the_id)
@@ -180,7 +198,7 @@ def get_average_depth_map(device, plane_seg, average_plane_info, epsilon):
     depth_map = torch.cat(depth_map)
     return depth_map
 
-def set_average_plane_info(device, plane_seg, average_plane_info):
+def set_average_plane_info(plane_seg, average_plane_info):
     '''
     description: set the per pixel plane info to the average
     parameter: the plane ids, plane_segs, the average plane infos, the shape of the depth map
@@ -251,7 +269,7 @@ def utils_test():
     plane_seg_1 = transform_seg(plane_seg_1_load)
     plane_seg = torch.stack((plane_seg_0, plane_seg_1)) 
     plane_ids = get_plane_ids(plane_seg) 
-    device = torch.device("cpu")
+    device = False
 
     parameters = get_parameter(device, depth_map_original, plane_seg, 1e-8)
 
@@ -289,7 +307,7 @@ def utils_test():
             diff /= avg
             print(i, the_id, count, diff)
 
-    parameter_average = set_average_plane_info(device, plane_seg, plane_info)
+    parameter_average = set_average_plane_info(plane_seg, plane_info)
     for i in range(len(plane_ids)):
         avg_p = torch.abs(torch.mean(parameters[i][0]))
         avg_q = torch.abs(torch.mean(parameters[i][1]))

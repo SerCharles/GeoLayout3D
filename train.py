@@ -34,10 +34,11 @@ def train(args, device, train_loader, model, optimizer, epoch):
 
         
         start = time.time()
-        image = image.to(device)
-        layout_depth = layout_depth.to(device)
-        layout_seg = layout_seg.to(device)
-        intrinsic = intrinsic.to(device)
+        if device:
+            image = image.cuda()
+            layout_depth = layout_depth.cuda()
+            layout_seg = layout_seg.cuda()
+            intrinsic = intrinsic.cuda()
         
 
         optimizer.zero_grad()
@@ -47,7 +48,6 @@ def train(args, device, train_loader, model, optimizer, epoch):
         average_plane_info = get_average_plane_info(device, parameter, layout_seg, max_num)
         parameter_gt = get_parameter(device, layout_depth, layout_seg, args.epsilon)
         parameter_gt = parameter_gt.detach()
-        #average_depth = get_average_depth_map(device, layout_seg, average_plane_info, args.epsilon)
 
         
         loss_p = parameter_loss(parameter, parameter_gt)

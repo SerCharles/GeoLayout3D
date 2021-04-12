@@ -31,10 +31,11 @@ def valid(args, device, valid_loader, model, epoch):
     for i, (image, layout_depth, layout_seg, intrinsic) in enumerate(valid_loader):
         start = time.time()
 
-        image = image.to(device)
-        layout_depth = layout_depth.to(device)
-        layout_seg = layout_seg.to(device)
-        intrinsic = intrinsic.to(device)
+        if device:
+            image = image.cuda()
+            layout_depth = layout_depth.cuda()
+            layout_seg = layout_seg.cuda()
+            intrinsic = intrinsic.cuda()
 
         with torch.no_grad():
             parameter = model(image)

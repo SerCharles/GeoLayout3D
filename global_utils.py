@@ -31,6 +31,7 @@ def init_args():
     parser = argparse.ArgumentParser(description = 'PyTorch GeoLayout3D Training')
     parser.add_argument('--seed', default = 1453)
     parser.add_argument('--cuda',  type = int, default = 1, help = 'use GPU or not')
+    parser.add_argument('--parallel',  type = int, default = 1, help = 'use multiple GPUs or not')
     parser.add_argument('--gpu_id', type = int, default = 1, help = 'GPU device id used')
     parser.add_argument('--epochs', default = 200, type = int)
     parser.add_argument('--start_epoch', default = 0, type = int,
@@ -102,14 +103,13 @@ def init_model(args):
     print('getting device...', end='')
     torch.manual_seed(args.seed)
     if args.cuda == 1:
-        torch.cuda.set_device(args.gpu_id)
-        device = torch.device(args.gpu_id)
-        torch.cuda.empty_cache()
+        device = True
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id) + ',' + str(args.gpu_id + 1) + ',' + str(args.gpu_id + 2) + ',' + str(args.gpu_id + 3)
     else:
-        device = torch.device("cpu")
+        device = False
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
-    print(device)
+    #print(device)
 
     print('Initialize model')
     
@@ -123,7 +123,10 @@ def init_model(args):
         model.load_state_dict(torch.load(filename, map_location = device))
 
     if device:
-        model.to(device)
+        if args.parallel: 
+            model = torch.nn.DataParallel(model, device_ids = [0, 1, 2, 3]).cuda()
+        else: 
+            model = model.cuda()
 
     print('Getting optimizer')
     optimizer = torch.optim.Adam(model.parameters(), args.learning_rate, weight_decay = args.weight_decay)
@@ -132,7 +135,7 @@ def init_model(args):
     print('Getting dataset')
     dataset_training = MatterPortDataSet(args.data_dir, 'training')
     dataset_validation = MatterPortDataSet(args.data_dir, 'validation')
-    dataloader_training =  DataLoader(dataset_training, batch_size = args.batch_size, shuffle = True, num_workers = 5)
+    dataloader_training = DataLoader(dataset_training, batch_size = args.batch_size, shuffle = True, num_workers = 5)
     dataloader_validation = DataLoader(dataset_validation, batch_size = args.batch_size, shuffle = False, num_workers = 5)
     print('Data got!')
 
@@ -147,15 +150,14 @@ def init_valid_model(args):
     print(args)
     print('getting device...', end='')
     torch.manual_seed(args.seed)
+
+
     if args.cuda == 1:
-        torch.cuda.set_device(args.gpu_id)
-        device = torch.device(args.gpu_id)
-        torch.cuda.empty_cache()
+        device = True
     else:
-        device = torch.device("cpu")
+        device = False
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
-    print(device)
 
     print('Initialize model')
     
@@ -167,7 +169,7 @@ def init_valid_model(args):
     filename = os.path.join(file_dir, 'checkpoint_' + str(args.epochs) + '.pth')
     model.load_state_dict(torch.load(filename, map_location = device))
     if device:
-        model.to(device)
+        model = model.cuda()
 
     print('Getting dataset')
     dataset_validation = MatterPortDataSet(args.data_dir, 'validation')

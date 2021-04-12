@@ -139,8 +139,11 @@ def depth_loss_direct(device, plane_seg, average_plane_info, depth_gt, epsilon):
             q = average_plane_info[i][the_id][1]
             r = average_plane_info[i][the_id][2]
             s = average_plane_info[i][the_id][3]
-            v = torch.arange(0, size_v, step = 1, device = device, requires_grad = False).reshape(size_v, 1)
-            u = torch.arange(0, size_u, step = 1, device = device, requires_grad = False).reshape(1, size_u)
+            v = torch.arange(0, size_v, step = 1, requires_grad = False).reshape(size_v, 1)
+            u = torch.arange(0, size_u, step = 1, requires_grad = False).reshape(1, size_u)
+            if device: 
+                v = v.cuda() 
+                u = u.cuda()
 
             mask = torch.eq(plane_seg[i][0], the_id)
             mask = mask.detach()
@@ -181,13 +184,13 @@ def loss_test():
     plane_ids = get_plane_ids(plane_seg) 
 
 
-    device = torch.device("cpu")
+    device = False
     parameters = get_parameter(device, depth_map_original, plane_seg, 1e-8)
     depth_map = get_depth_map(device, parameters, 1e-8)
     max_num = get_plane_max_num(plane_seg)
     plane_info = get_average_plane_info(device, parameters, plane_seg, max_num)
     depth_average = get_average_depth_map(device, plane_seg, plane_info, 1e-8)
-    parameters_avg = set_average_plane_info(device, plane_seg, plane_info)
+    parameters_avg = set_average_plane_info(plane_seg, plane_info)
 
     loss_p = parameter_loss(parameters_avg, parameters)
     loss_dis_1 = discrimitive_loss(parameters, plane_seg, plane_info, 0.1, 1.0)
