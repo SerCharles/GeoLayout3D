@@ -18,6 +18,7 @@ from global_utils import *
 from utils.post_process import *
 from data.dataset import *
 
+
 class AverageMeter(object):
     ''' 
     used in calculating the average depth metrics
@@ -116,7 +117,7 @@ def process():
                 post_process(parameter, intrinsic, args.cluster_threshold)
             save_plane_results(args, base_names, final_depths, final_labels, plane_infos)
 
-            final_depths = torch.from_numpy(final_depths).to(device)
+            final_depths = torch.from_numpy(final_depths).cuda()
             metrics_final.add_one(depth_metrics(final_depths, layout_depth))
             accuracy = seg_metrics(unique_label_list, final_labels, layout_seg_gt)
 

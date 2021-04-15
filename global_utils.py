@@ -15,6 +15,8 @@ import os
 import PIL 
 import cv2
 from PIL import Image
+from collections import OrderedDict
+
 
 from data.dataset import *
 import models.senet as senet 
@@ -72,8 +74,8 @@ def save_checkpoint(args, state, epoch):
     file_dir = os.path.join(args.save_dir, args.cur_name)
     if not os.path.exists(file_dir):
         os.mkdir(file_dir)
-    if epoch % 50 == 0:
-        filename = os.path.join(file_dir, 'checkpoint_' + str(epoch) + '.pth')
+    if (epoch + 1) % 10 == 0:
+        filename = os.path.join(file_dir, 'checkpoint_' + str(epoch + 1) + '.pth')
         torch.save(state, filename)
 
 def write_log(args, epoch, batch, the_type, info):
@@ -104,7 +106,8 @@ def init_model(args):
     torch.manual_seed(args.seed)
     if args.cuda == 1:
         device = True
-        os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id) + ',' + str(args.gpu_id + 1) + ',' + str(args.gpu_id + 2) + ',' + str(args.gpu_id + 3)
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id) + ',' + str(args.gpu_id + 1) + ',' + str(args.gpu_id + 2) + ',' + str(args.gpu_id + 3) + \
+        ',' + str(args.gpu_id + 4) + ',' + str(args.gpu_id + 5) + ',' + str(args.gpu_id + 6) + ',' + str(args.gpu_id + 7)
     else:
         device = False
     torch.backends.cudnn.enabled = True
@@ -117,16 +120,18 @@ def init_model(args):
     Encoder = modules.E_senet(original_model)
     model = net.model(Encoder, num_features = 2048, block_channel = [256, 512, 1024, 2048])
 
-    if(args.start_epoch != 0):
-        file_dir = os.path.join(args.save_dir, args.cur_name)
-        filename = os.path.join(file_dir, 'checkpoint_' + str(args.start_epoch) + '.pth')
-        model.load_state_dict(torch.load(filename, map_location = device))
 
     if device:
         if args.parallel: 
-            model = torch.nn.DataParallel(model, device_ids = [0, 1, 2, 3]).cuda()
+            model = torch.nn.DataParallel(model, device_ids = [0, 1, 2, 3, 4, 5, 6, 7]).cuda()
         else: 
             model = model.cuda()
+
+    if(args.start_epoch != 0):
+        file_dir = os.path.join(args.save_dir, args.cur_name)
+        filename = os.path.join(file_dir, 'checkpoint_' + str(args.start_epoch) + '.pth')
+        model.load_state_dict(torch.load(filename))
+
 
     print('Getting optimizer')
     optimizer = torch.optim.Adam(model.parameters(), args.learning_rate, weight_decay = args.weight_decay)
@@ -165,11 +170,17 @@ def init_valid_model(args):
     Encoder = modules.E_senet(original_model)
     model = net.model(Encoder, num_features = 2048, block_channel = [256, 512, 1024, 2048])
 
+
+    if device:
+        if args.parallel: 
+            model = torch.nn.DataParallel(model, device_ids = [0, 1, 2, 3, 4, 5, 6, 7]).cuda()
+        else: 
+            model = model.cuda()
     file_dir = os.path.join(args.save_dir, args.cur_name)
     filename = os.path.join(file_dir, 'checkpoint_' + str(args.epochs) + '.pth')
-    model.load_state_dict(torch.load(filename, map_location = device))
-    if device:
-        model = model.cuda()
+
+    model.load_state_dict(torch.load(filename))
+
 
     print('Getting dataset')
     dataset_validation = MatterPortDataSet(args.data_dir, 'validation')
