@@ -9,7 +9,9 @@ from math import *
 from PIL import Image
 import PIL
 import torch
+import torch.nn as nn
 from torchvision import transforms
+
 
 
 def get_parameter(device, depth_map, plane_seg, epsilon):
@@ -92,7 +94,7 @@ def get_parameter(device, depth_map, plane_seg, epsilon):
     parameters = torch.cat([p, q, r, s], dim = 1)
 
     return parameters
-    
+
 
 
 def get_depth_map(device, parameters, epsilon):

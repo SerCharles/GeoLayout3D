@@ -164,7 +164,7 @@ class MatterPortDataSet(Dataset):
                                 transforms.ToTensor(),
                                 transforms.ColorJitter(brightness = 0.4, contrast = 0.4, saturation = 0.4, )])
         self.transform_depth = transforms.Compose([transforms.ToTensor()])
-        self.transform_picture_test = transforms.Compose([transforms.RandomCrop([304, 228]), transforms.ToTensor()])
+        self.transform_picture_test = transforms.Compose([transforms.Resize([320, 240]), transforms.RandomCrop([304, 228]), transforms.ToTensor()])
 
 
     def __getitem__(self, i):
@@ -191,7 +191,6 @@ class MatterPortDataSet(Dataset):
             layout_depth = self.load_depth(layout_depth_name)
             layout_seg = self.load_depth(layout_seg_name)
 
-
                 
         if self.type == 'testing':
             image = self.transform_picture_test(image)
@@ -209,6 +208,7 @@ class MatterPortDataSet(Dataset):
             image = self.transform_picture(image)
             layout_depth = self.transform_depth(layout_depth) / 4000.0
             layout_seg = self.transform_depth(layout_seg)
+
             intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
             return image, layout_depth, layout_seg, intrinsic
 
@@ -246,7 +246,7 @@ def data_test():
     print('filename:', a.layout_depth_filenames[i + 1])
     #print('depth:', depth, depth.size())
     print('image:', image, image.size())
-    #print('init_label:', init_label, init_label.size())
+    #print('all_seg:', all_seg, all_seg.size())
     print('layout_depth:', layout_depth, layout_depth.size())
     print('layout_seg:', layout_seg, layout_seg.size())
     print('intrinsic:', intrinsic, intrinsic.shape)

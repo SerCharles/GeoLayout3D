@@ -58,6 +58,7 @@ class RandomCrop(object):
         image =  image.crop((j, i, j + w, i + h))
         depth = depth.crop((j, i, j + w, i + h))
         seg = seg.crop((j, i, j + w, i + h))
+
         oh, ow = self.size_depth
         depth = depth.resize((ow, oh), PIL.Image.NEAREST)
         seg = seg.resize((ow, oh), PIL.Image.NEAREST)
